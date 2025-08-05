@@ -21,17 +21,21 @@ export const uploadCSV = mutation({
     })),
   },
   handler: async (ctx, args) => {
-    await requireAuth(ctx);
+    const userId = await requireAuth(ctx);
     
-    // Clear existing data
-    const existing = await ctx.db.query("attendees").collect();
+    // Clear existing data for this user only
+    const existing = await ctx.db
+      .query("attendees")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
     for (const attendee of existing) {
       await ctx.db.delete(attendee._id);
     }
     
-    // Insert new data
+    // Insert new data associated with the current user
     for (const row of args.csvData) {
       await ctx.db.insert("attendees", {
+        userId,
         email: row.email,
         first_name: row.first_name,
         last_name: row.last_name,
@@ -47,10 +51,11 @@ export const uploadCSV = mutation({
 export const getCheckedInAttendees = query({
   args: {},
   handler: async (ctx) => {
-    await requireAuth(ctx);
+    const userId = await requireAuth(ctx);
     
     const attendees = await ctx.db
       .query("attendees")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
       .filter((q) => q.neq(q.field("checked_in_at"), ""))
       .collect();
     
@@ -63,10 +68,11 @@ export const assignCodes = mutation({
     codes: v.array(v.string()),
   },
   handler: async (ctx, args) => {
-    await requireAuth(ctx);
+    const userId = await requireAuth(ctx);
     
     const checkedInAttendees = await ctx.db
       .query("attendees")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
       .filter((q) => q.neq(q.field("checked_in_at"), ""))
       .collect();
     
@@ -84,10 +90,11 @@ export const assignCodes = mutation({
 export const getAssignmentPreview = query({
   args: {},
   handler: async (ctx) => {
-    await requireAuth(ctx);
+    const userId = await requireAuth(ctx);
     
     const attendees = await ctx.db
       .query("attendees")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
       .filter((q) => q.neq(q.field("checked_in_at"), ""))
       .collect();
     
@@ -131,10 +138,11 @@ export const sendEmails = action({
 export const getAttendeesWithCodes = query({
   args: {},
   handler: async (ctx) => {
-    await requireAuth(ctx);
+    const userId = await requireAuth(ctx);
     
     const attendees = await ctx.db
       .query("attendees")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
       .filter((q) => q.and(
         q.neq(q.field("checked_in_at"), ""),
         q.neq(q.field("assigned_code"), undefined)
@@ -150,7 +158,13 @@ export const markEmailSent = mutation({
     attendeeId: v.id("attendees"),
   },
   handler: async (ctx, args) => {
-    await requireAuth(ctx);
+    const userId = await requireAuth(ctx);
+    
+    // Verify the attendee belongs to the current user
+    const attendee = await ctx.db.get(args.attendeeId);
+    if (!attendee || attendee.userId !== userId) {
+      throw new Error("Attendee not found or not owned by current user");
+    }
     
     await ctx.db.patch(args.attendeeId, {
       email_sent: true,
@@ -161,9 +175,12 @@ export const markEmailSent = mutation({
 export const getEmailStats = query({
   args: {},
   handler: async (ctx) => {
-    await requireAuth(ctx);
+    const userId = await requireAuth(ctx);
     
-    const allAttendees = await ctx.db.query("attendees").collect();
+    const allAttendees = await ctx.db
+      .query("attendees")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
     const checkedIn = allAttendees.filter(a => a.checked_in_at !== "");
     const withCodes = checkedIn.filter(a => a.assigned_code);
     const emailsSent = checkedIn.filter(a => a.email_sent);
