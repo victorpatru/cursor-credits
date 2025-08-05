@@ -9,7 +9,7 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-sm h-16 flex justify-between items-center border-b shadow-sm px-4">
-        <h2 className="text-xl font-semibold text-gray-800">CSV Email Automation</h2>
+        <h2 className="text-xl font-semibold text-gray-800">Send Credits to Attendees</h2>
         <Authenticated>
           <SignOutButton />
         </Authenticated>
@@ -38,15 +38,11 @@ function Content() {
   return (
     <div className="space-y-8">
       <div className="text-center">
-        <h1 className="text-4xl font-bold text-gray-900 mb-4">CSV Email Automation</h1>
         <Authenticated>
           <p className="text-lg text-gray-600">
             Welcome back, {loggedInUser?.email ?? "friend"}!
           </p>
         </Authenticated>
-        <Unauthenticated>
-          <p className="text-lg text-gray-600">Sign in to get started</p>
-        </Unauthenticated>
       </div>
 
       <Authenticated>
