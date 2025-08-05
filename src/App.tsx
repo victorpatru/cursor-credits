@@ -2,8 +2,9 @@ import { Authenticated, Unauthenticated, useQuery, useMutation, useAction } from
 import { api } from "../convex/_generated/api";
 import { SignInForm } from "./SignInForm";
 import { SignOutButton } from "./SignOutButton";
+import { FileDropZone } from "./components/FileDropZone";
 import { Toaster, toast } from "sonner";
-import { useState, useRef } from "react";
+import { useState } from "react";
 
 export default function App() {
   return (
@@ -63,7 +64,6 @@ function EmailAutomationApp() {
   const [codes, setCodes] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [isSending, setIsSending] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const uploadCSV = useMutation(api.attendees.uploadCSV);
   const assignCodes = useMutation(api.attendees.assignCodes);
@@ -73,8 +73,7 @@ function EmailAutomationApp() {
   const assignmentPreview = useQuery(api.attendees.getAssignmentPreview) || [];
   const emailStats = useQuery(api.attendees.getEmailStats);
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const handleFileSelect = async (file: File) => {
     if (!file) return;
 
     setCsvFile(file);
@@ -178,35 +177,21 @@ function EmailAutomationApp() {
       {/* CSV Upload Section */}
       <div className="bg-white rounded-lg shadow-sm border p-6">
         <h2 className="text-xl font-semibold text-gray-900 mb-4">1. Upload CSV File</h2>
-        <p className="text-gray-600 mb-4">
-          Upload a CSV file with columns: email, first_name, last_name, checked_in_at
-        </p>
         
-        <div className="space-y-4">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".csv"
-            onChange={handleFileUpload}
-            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-            disabled={isUploading}
-          />
-          
-          {isUploading && (
-            <div className="flex items-center space-x-2">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-              <span className="text-sm text-gray-600">Processing CSV...</span>
-            </div>
-          )}
-          
-          {checkedInAttendees.length > 0 && (
-            <div className="bg-green-50 border border-green-200 rounded-md p-3">
-              <p className="text-green-800 font-medium">
-                ✓ Found {checkedInAttendees.length} checked-in attendees
-              </p>
-            </div>
-          )}
-        </div>
+        <FileDropZone 
+          onFileSelect={handleFileSelect}
+          onError={(message) => toast.error(message)}
+          isUploading={isUploading}
+          accept=".csv"
+        />
+        
+        {checkedInAttendees.length > 0 && (
+          <div className="bg-green-50 border border-green-200 rounded-md p-3 mt-4">
+            <p className="text-green-800 font-medium">
+              ✓ Found {checkedInAttendees.length} checked-in attendees
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Code Assignment Section */}
