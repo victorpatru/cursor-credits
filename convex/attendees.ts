@@ -99,6 +99,7 @@ export const getAssignmentPreview = query({
       .collect();
     
     return attendees.map(attendee => ({
+      _id: attendee._id,
       first_name: attendee.first_name,
       email: attendee.email,
       assigned_code: attendee.assigned_code || "No code assigned",
@@ -107,24 +108,75 @@ export const getAssignmentPreview = query({
 });
 
 export const sendEmails = action({
-  args: {},
-  handler: async (ctx) => {
+  args: {
+    eventName: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
     const attendees = await ctx.runQuery(api.attendees.getAttendeesWithCodes);
+    
+    // Validate all attendees have required data
+    const attendeesWithoutEmail = attendees.filter(a => !a.email || a.email.trim() === "");
+    const attendeesWithoutCode = attendees.filter(a => !a.assigned_code);
+    
+    if (attendeesWithoutEmail.length > 0) {
+      throw new Error(`${attendeesWithoutEmail.length} attendee(s) are missing email addresses`);
+    }
+    
+    if (attendeesWithoutCode.length > 0) {
+      throw new Error(`${attendeesWithoutCode.length} attendee(s) don't have assigned codes`);
+    }
+    
+    if (attendees.length === 0) {
+      throw new Error("No attendees found to send emails to");
+    }
     
     let successCount = 0;
     let errorCount = 0;
     
     for (const attendee of attendees) {
       try {
-        // Simulate email sending (replace with actual email service)
-        console.log(`Sending email to ${attendee.email}: Hi ${attendee.first_name}, your code is: ${attendee.assigned_code}`);
+        // Additional validation per attendee
+        if (!attendee.email || attendee.email.trim() === "") {
+          console.error(`Skipping attendee ${attendee._id}: missing email`);
+          errorCount++;
+          continue;
+        }
         
-        // Mark as sent
-        await ctx.runMutation(api.attendees.markEmailSent, {
-          attendeeId: attendee._id,
+        if (!attendee.assigned_code) {
+          console.error(`Skipping attendee ${attendee._id}: missing assigned code`);
+          errorCount++;
+          continue;
+        }
+
+        // Send email using Resend with our custom template
+        const result = await ctx.runAction(api.emails.sendHackathonCodeEmail, {
+          to: attendee.email,
+          firstName: attendee.first_name || "Participant",
+          redemptionLink: attendee.assigned_code,
+          eventName: args.eventName || "Send AI Hackathon"
         });
-        
-        successCount++;
+
+        if (result.success) {
+          // Mark as sent
+          await ctx.runMutation(api.attendees.markEmailSent, {
+            attendeeId: attendee._id,
+          });
+          
+          // Record in permanent sent_emails history
+          await ctx.runMutation(api.attendees.recordSentEmail, {
+            email: attendee.email,
+            firstName: attendee.first_name || "Participant",
+            lastName: attendee.last_name || "",
+            redemptionLink: attendee.assigned_code,
+            eventName: args.eventName || "Cursor Bucharest Hackathon",
+            checkedInAt: attendee.checked_in_at,
+          });
+          
+          successCount++;
+        } else {
+          console.error(`Failed to send email to ${attendee.email}:`, result.error);
+          errorCount++;
+        }
       } catch (error) {
         console.error(`Failed to send email to ${attendee.email}:`, error);
         errorCount++;
@@ -191,5 +243,83 @@ export const getEmailStats = query({
       withCodes: withCodes.length,
       emailsSent: emailsSent.length,
     };
+  },
+});
+
+export const getSentEmailsHistory = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await requireAuth(ctx);
+    
+    const sentEmails = await ctx.db
+      .query("sent_emails")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .order("desc")
+      .collect();
+    
+    return sentEmails;
+  },
+});
+
+export const recordSentEmail = mutation({
+  args: {
+    email: v.string(),
+    firstName: v.string(),
+    lastName: v.string(),
+    redemptionLink: v.string(),
+    eventName: v.string(),
+    checkedInAt: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await requireAuth(ctx);
+    
+    await ctx.db.insert("sent_emails", {
+      userId,
+      email: args.email,
+      first_name: args.firstName,
+      last_name: args.lastName,
+      redemption_link: args.redemptionLink,
+      event_name: args.eventName,
+      checked_in_at: args.checkedInAt,
+      sent_at: Date.now(),
+    });
+  },
+});
+
+export const deleteAllAttendees = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await requireAuth(ctx);
+    
+    // Get all attendees for this user
+    const attendees = await ctx.db
+      .query("attendees")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+    
+    // Delete all attendees
+    for (const attendee of attendees) {
+      await ctx.db.delete(attendee._id);
+    }
+    
+    return { deletedCount: attendees.length };
+  },
+});
+
+export const deleteAttendee = mutation({
+  args: {
+    attendeeId: v.id("attendees"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await requireAuth(ctx);
+    
+    // Verify the attendee belongs to the current user
+    const attendee = await ctx.db.get(args.attendeeId);
+    if (!attendee || attendee.userId !== userId) {
+      throw new Error("Attendee not found or not owned by current user");
+    }
+    
+    await ctx.db.delete(args.attendeeId);
+    return { success: true };
   },
 });

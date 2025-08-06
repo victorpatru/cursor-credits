@@ -10,7 +10,7 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-sm h-16 flex justify-between items-center border-b shadow-sm px-4">
-        <h2 className="text-xl font-semibold text-gray-800">Send Credits to Attendees</h2>
+        <h2 className="text-xl font-semibold text-gray-800">Send Credits to Hackathon Attendees</h2>
         <Authenticated>
           <SignOutButton />
         </Authenticated>
@@ -62,16 +62,21 @@ function Content() {
 function EmailAutomationApp() {
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [codes, setCodes] = useState("");
+  const [hackathonName, setHackathonName] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   const uploadCSV = useMutation(api.attendees.uploadCSV);
   const assignCodes = useMutation(api.attendees.assignCodes);
   const sendEmails = useAction(api.attendees.sendEmails);
+  const deleteAllAttendees = useMutation(api.attendees.deleteAllAttendees);
+  const deleteAttendee = useMutation(api.attendees.deleteAttendee);
   
   const checkedInAttendees = useQuery(api.attendees.getCheckedInAttendees) || [];
   const assignmentPreview = useQuery(api.attendees.getAssignmentPreview) || [];
   const emailStats = useQuery(api.attendees.getEmailStats);
+  const sentEmailsHistory = useQuery(api.attendees.getSentEmailsHistory) || [];
 
   const handleFileSelect = async (file: File) => {
     if (!file) return;
@@ -132,18 +137,86 @@ function EmailAutomationApp() {
   };
 
   const handleSendEmails = async () => {
+    // Validate hackathon name is provided
+    if (!hackathonName.trim()) {
+      toast.error("Please enter a hackathon name before sending emails.");
+      return;
+    }
+    
+    // Validate that all attendees have emails and assigned codes
+    const attendeesWithoutEmail = assignmentPreview.filter(a => !a.email || a.email.trim() === "");
+    const attendeesWithoutCode = assignmentPreview.filter(a => !a.assigned_code || a.assigned_code === "No code assigned");
+    
+    if (attendeesWithoutEmail.length > 0) {
+      toast.error(`${attendeesWithoutEmail.length} attendee(s) are missing email addresses. Please ensure all attendees have valid emails before sending.`);
+      return;
+    }
+    
+    if (attendeesWithoutCode.length > 0) {
+      toast.error(`${attendeesWithoutCode.length} attendee(s) don't have assigned codes. Please assign codes to all attendees before sending emails.`);
+      return;
+    }
+    
+    if (assignmentPreview.length === 0) {
+      toast.error("No attendees found to send emails to. Please upload a CSV and assign codes first.");
+      return;
+    }
+
     setIsSending(true);
     try {
-      const result = await sendEmails();
+      const result = await sendEmails({ 
+        eventName: hackathonName.trim() 
+      });
       toast.success(`Sent ${result.successCount} emails successfully`);
       if (result.errorCount > 0) {
         toast.error(`Failed to send ${result.errorCount} emails`);
       }
+      
+      // Reset the form after successful sending
+      if (result.successCount > 0) {
+        resetForm();
+      } 
     } catch (error) {
       toast.error("Failed to send emails");
       console.error(error);
     } finally {
       setIsSending(false);
+    }
+  };
+
+  const resetForm = () => {
+    setCsvFile(null);
+    setCodes("");
+    setHackathonName("");
+    setShowPreview(false);
+  };
+
+  const handleDeleteAllAttendees = async () => {
+    if (!confirm("Are you sure you want to delete all uploaded attendees? This action cannot be undone.")) {
+      return;
+    }
+
+    try {
+      const result = await deleteAllAttendees();
+      toast.success(`Deleted ${result.deletedCount} attendees`);
+      setCsvFile(null); // Clear the file state
+    } catch (error) {
+      toast.error("Failed to delete attendees");
+      console.error(error);
+    }
+  };
+
+  const handleDeleteAttendee = async (attendeeId: string) => {
+    if (!confirm("Are you sure you want to delete this attendee? This action cannot be undone.")) {
+      return;
+    }
+
+    try {
+      await deleteAttendee({ attendeeId: attendeeId as any });
+      toast.success("Attendee deleted successfully");
+    } catch (error) {
+      toast.error("Failed to delete attendee");
+      console.error(error);
     }
   };
 
@@ -186,10 +259,24 @@ function EmailAutomationApp() {
         />
         
         {checkedInAttendees.length > 0 && (
-          <div className="bg-green-50 border border-green-200 rounded-md p-3 mt-4">
-            <p className="text-green-800 font-medium">
-              ✓ Found {checkedInAttendees.length} checked-in attendees
-            </p>
+          <div className="mt-4 space-y-3">
+            <div className="bg-green-50 border border-green-200 rounded-md p-3">
+              <p className="text-green-800 font-medium">
+                ✓ Found {checkedInAttendees.length} checked-in attendees
+              </p>
+            </div>
+            
+            <div className="flex justify-end">
+              <button
+                onClick={handleDeleteAllAttendees}
+                className="px-4 py-2 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 transition-colors flex items-center space-x-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                <span>Delete All Attendees</span>
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -203,6 +290,19 @@ function EmailAutomationApp() {
           </p>
           
           <div className="space-y-4">
+            <div>
+              <label htmlFor="hackathon-name" className="block text-sm font-medium text-gray-700 mb-2">
+                Hackathon Name
+              </label>
+              <input
+                id="hackathon-name"
+                type="text"
+                value={hackathonName}
+                onChange={(e) => setHackathonName(e.target.value)}
+                placeholder="Enter hackathon name (required)"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
             <textarea
               value={codes}
               onChange={(e) => setCodes(e.target.value)}
@@ -234,11 +334,14 @@ function EmailAutomationApp() {
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Assigned Code
                         </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Actions
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {assignmentPreview.map((attendee, index) => (
-                        <tr key={index}>
+                        <tr key={attendee._id || index}>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             {attendee.first_name}
                           </td>
@@ -249,6 +352,17 @@ function EmailAutomationApp() {
                             <span className={attendee.assigned_code === "No code assigned" ? "text-red-600" : "text-green-600 font-mono"}>
                               {attendee.assigned_code}
                             </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <button
+                              onClick={() => handleDeleteAttendee(attendee._id)}
+                              className="text-red-600 hover:text-red-900 transition-colors"
+                              title="Delete attendee"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
                           </td>
                         </tr>
                       ))}
@@ -266,20 +380,72 @@ function EmailAutomationApp() {
         <div className="bg-white rounded-lg shadow-sm border p-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">3. Send Emails</h2>
           <p className="text-gray-600 mb-4">
-            Send personalized emails with the template: "Hi {"{first_name}"}, your code is: {"{code}"}"
+            Send personalized emails with a clickable link to claim Cursor credits. Each attendee will receive their unique redemption link.
           </p>
           
           <div className="space-y-4">
-            <div className="bg-gray-50 rounded-md p-4">
-              <h4 className="font-medium text-gray-900 mb-2">Email Template Preview:</h4>
-              <p className="text-gray-700 italic">
-                "Hi [First Name], your code is: [Assigned Code]"
-              </p>
+            {/* Validation Warnings */}
+            {(() => {
+              const attendeesWithoutEmail = assignmentPreview.filter(a => !a.email || a.email.trim() === "");
+              const attendeesWithoutCode = assignmentPreview.filter(a => !a.assigned_code || a.assigned_code === "No code assigned");
+              
+              if (attendeesWithoutEmail.length > 0 || attendeesWithoutCode.length > 0) {
+                return (
+                  <div className="bg-amber-50 border border-amber-200 rounded-md p-4">
+                    <div className="flex items-start space-x-2">
+                      <div className="text-amber-500 mt-0.5">⚠️</div>
+                      <div>
+                        <h4 className="font-medium text-amber-800 mb-1">Email Requirements Not Met</h4>
+                        <div className="text-amber-700 text-sm space-y-1">
+                          {attendeesWithoutEmail.length > 0 && (
+                            <p>{attendeesWithoutEmail.length} attendee(s) are missing email addresses</p>
+                          )}
+                          {attendeesWithoutCode.length > 0 && (
+                            <p>{attendeesWithoutCode.length} attendee(s) don't have assigned codes</p>
+                          )}
+                          <p className="font-medium">Please fix these issues before sending emails.</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+              return null;
+            })()}
+            
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="font-medium text-gray-900">Email Preview</h4>
+                <button
+                  onClick={() => setShowPreview(!showPreview)}
+                  className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200"
+                >
+                  {showPreview ? "Hide Preview" : "Show Preview"}
+                </button>
+              </div>
+              
+              {showPreview && (
+                <div>
+                  {assignmentPreview.length > 0 ? (
+                    <EmailPreview 
+                      firstName={assignmentPreview[0].first_name || "Participant"}
+                      hackathonName={hackathonName || "eg. Cursor Bucharest Hackathon"}
+                      redemptionLink={assignmentPreview[0].assigned_code !== "No code assigned" ? assignmentPreview[0].assigned_code : "https://cursor.com/redeem/sample-code"}
+                    />
+                  ) : (
+                    <div className="border border-gray-200 rounded-lg p-6 bg-gray-50 text-center">
+                      <p className="text-gray-500">
+                        📝 Upload attendees and assign codes to see the email preview with real data
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             
             <button
               onClick={handleSendEmails}
-              disabled={isSending}
+              disabled={isSending || !hackathonName.trim() || assignmentPreview.filter(a => !a.email || a.email.trim() === "" || !a.assigned_code || a.assigned_code === "No code assigned").length > 0}
               className="px-6 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
             >
               {isSending && (
@@ -298,6 +464,113 @@ function EmailAutomationApp() {
           </div>
         </div>
       )}
+
+      {/* Sent Emails History Section */}
+      {sentEmailsHistory.length > 0 && (
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">📧 Sent Emails History</h2>
+          <p className="text-gray-600 mb-4">
+            Here's a record of all emails that have been successfully sent.
+          </p>
+          
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Name
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Email
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Redemption Link
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Email Sent At
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {sentEmailsHistory.map((sentEmail) => (
+                  <tr key={sentEmail._id}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {sentEmail.first_name} {sentEmail.last_name}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {sentEmail.email}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-600 font-mono">
+                      <a href={sentEmail.redemption_link} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                        {sentEmail.redemption_link}
+                      </a>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {new Date(sentEmail.sent_at).toLocaleString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          
+          <div className="mt-4 text-center">
+            <p className="text-sm text-gray-500">
+              Total emails sent: {sentEmailsHistory.length}
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Email Preview Component
+function EmailPreview({ firstName, hackathonName, redemptionLink }: {
+  firstName: string;
+  hackathonName: string;
+  redemptionLink: string;
+}) {
+  return (
+    <div className="border border-gray-200 rounded-lg p-6 bg-white shadow-sm max-w-md">
+      <div className="space-y-4">
+        {/* Email Header */}
+        <div className="text-center border-b pb-4">
+          <h3 className="text-lg font-semibold text-gray-900">🚀 {hackathonName}</h3>
+        </div>
+        
+        {/* Email Content */}
+        <div className="space-y-4">
+          <h2 className="text-xl font-bold text-gray-900 text-center">
+            Your hackathon credits are ready!
+          </h2>
+          
+          <p className="text-gray-600 text-center">
+            Hi {firstName}! Thank you for checking in to our event. Here's your unique access code that you can use to claim your Cursor credits.
+          </p>
+          
+          {/* Link Button */}
+          <div className="text-center py-4">
+            <div className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold">
+              Claim Your Cursor Credits
+            </div>
+          </div>
+          
+          <p className="text-gray-600 text-center text-sm">
+            Simply click the button above to instantly claim your free Cursor credits for the hackathon.
+          </p>
+          
+          <p className="text-gray-500 text-center text-xs mt-4">
+            If you didn't attend this event or received this email by mistake, please contact our support team.
+          </p>
+          
+          <div className="text-center text-gray-500 text-xs pt-4 border-t">
+            Have an amazing time at the hackathon! 🎯<br/>
+            Best regards,<br/>
+            The {hackathonName} Team
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

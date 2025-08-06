@@ -13,6 +13,9 @@
   "dependencies": {
     "@auth/core": "^0.40.0",
     "@convex-dev/auth": "^0.0.80",
+    "@convex-dev/resend": "^0.1.7",
+    "@react-email/components": "^0.4.0",
+    "@react-email/render": "^1.1.4",
     "clsx": "^2.1.1",
     "convex": "^1.24.2",
     "react": "^19.0.0",
