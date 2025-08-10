@@ -1,19 +1,23 @@
-import { Authenticated, Unauthenticated, useQuery, useMutation, useAction } from "convex/react";
-import { api } from "../convex/_generated/api";
-import { SignInForm } from "./SignInForm";
-import { SignOutButton } from "./SignOutButton";
+import { useEffect, useState } from "react";
+import {
+  uploadCSV as apiUploadCSV,
+  assignCodes as apiAssignCodes,
+  sendEmails as apiSendEmails,
+  getCheckedIn,
+  getAssignmentPreview,
+  getStats,
+  getSentEmails,
+  deleteAllAttendees as apiDeleteAllAttendees,
+  deleteAttendee as apiDeleteAttendee,
+} from "./lib/api";
 import { FileDropZone } from "./components/FileDropZone";
 import { Toaster, toast } from "sonner";
-import { useState } from "react";
 
 export default function App() {
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-sm h-16 flex justify-between items-center border-b shadow-sm px-4">
         <h2 className="text-xl font-semibold text-gray-800">Send Credits to Hackathon Attendees</h2>
-        <Authenticated>
-          <SignOutButton />
-        </Authenticated>
       </header>
       <main className="flex-1 p-8">
         <div className="max-w-4xl mx-auto">
@@ -26,35 +30,11 @@ export default function App() {
 }
 
 function Content() {
-  const loggedInUser = useQuery(api.auth.loggedInUser);
-
-  if (loggedInUser === undefined) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-8">
-      <div className="text-center">
-        <Authenticated>
-          <p className="text-lg text-gray-600">
-            Welcome back, {loggedInUser?.email ?? "friend"}!
-          </p>
-        </Authenticated>
-      </div>
+      <div className="text-center" />
 
-      <Authenticated>
-        <EmailAutomationApp />
-      </Authenticated>
-
-      <Unauthenticated>
-        <div className="max-w-md mx-auto">
-          <SignInForm />
-        </div>
-      </Unauthenticated>
+      <EmailAutomationApp />
     </div>
   );
 }
@@ -67,16 +47,27 @@ function EmailAutomationApp() {
   const [isSending, setIsSending] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
 
-  const uploadCSV = useMutation(api.attendees.uploadCSV);
-  const assignCodes = useMutation(api.attendees.assignCodes);
-  const sendEmails = useAction(api.attendees.sendEmails);
-  const deleteAllAttendees = useMutation(api.attendees.deleteAllAttendees);
-  const deleteAttendee = useMutation(api.attendees.deleteAttendee);
-  
-  const checkedInAttendees = useQuery(api.attendees.getCheckedInAttendees) || [];
-  const assignmentPreview = useQuery(api.attendees.getAssignmentPreview) || [];
-  const emailStats = useQuery(api.attendees.getEmailStats);
-  const sentEmailsHistory = useQuery(api.attendees.getSentEmailsHistory) || [];
+  const [checkedInAttendees, setCheckedInAttendees] = useState<any[]>([]);
+  const [assignmentPreview, setAssignmentPreview] = useState<any[]>([]);
+  const [emailStats, setEmailStats] = useState<any | null>(null);
+  const [sentEmailsHistory, setSentEmailsHistory] = useState<any[]>([]);
+
+  const refreshAll = async () => {
+    const [a, b, c, d] = await Promise.all([
+      getCheckedIn(),
+      getAssignmentPreview(),
+      getStats(),
+      getSentEmails(),
+    ]);
+    setCheckedInAttendees(a);
+    setAssignmentPreview(b);
+    setEmailStats(c);
+    setSentEmailsHistory(d);
+  };
+
+  useEffect(() => {
+    void refreshAll();
+  }, []);
 
   const handleFileSelect = async (file: File) => {
     if (!file) return;
@@ -87,18 +78,41 @@ function EmailAutomationApp() {
     try {
       const text = await file.text();
       const lines = text.split('\n').filter(line => line.trim());
-      const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+      
+      // Helper function to parse CSV line with quoted fields
+      const parseCSVLine = (line: string) => {
+        const result = [];
+        let current = '';
+        let inQuotes = false;
+        
+        for (let i = 0; i < line.length; i++) {
+          const char = line[i];
+          if (char === '"') {
+            inQuotes = !inQuotes;
+          } else if (char === ',' && !inQuotes) {
+            result.push(current.trim());
+            current = '';
+          } else {
+            current += char;
+          }
+        }
+        result.push(current.trim());
+        return result;
+      };
+      
+      const headers = parseCSVLine(lines[0]).map(h => h.trim().toLowerCase());
+      console.log("CSV Headers:", headers);
       
       const csvData = [];
       for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',').map(v => v.trim());
+        const values = parseCSVLine(lines[i]);
         const row: any = {};
         
         headers.forEach((header, index) => {
           row[header] = values[index] || "";
         });
         
-        // Only include rows with checked_in_at data
+        console.log("Row data:", row);
         if (row.checked_in_at && row.checked_in_at !== "") {
           csvData.push({
             email: row.email || "",
@@ -106,10 +120,13 @@ function EmailAutomationApp() {
             last_name: row.last_name || "",
             checked_in_at: row.checked_in_at,
           });
+        } else {
+          console.log("Row filtered out - checked_in_at:", row.checked_in_at);
         }
       }
 
-      await uploadCSV({ csvData });
+      await apiUploadCSV(csvData);
+      await refreshAll();
       toast.success(`Uploaded ${csvData.length} checked-in attendees`);
     } catch (error) {
       toast.error("Failed to upload CSV file");
@@ -128,7 +145,8 @@ function EmailAutomationApp() {
     }
 
     try {
-      const result = await assignCodes({ codes: codeList });
+      const result = await apiAssignCodes(codeList);
+      await refreshAll();
       toast.success(`Assigned ${result.assigned} codes`);
     } catch (error) {
       toast.error("Failed to assign codes");
@@ -137,13 +155,11 @@ function EmailAutomationApp() {
   };
 
   const handleSendEmails = async () => {
-    // Validate hackathon name is provided
     if (!hackathonName.trim()) {
       toast.error("Please enter a hackathon name before sending emails.");
       return;
     }
     
-    // Validate that all attendees have emails and assigned codes
     const attendeesWithoutEmail = assignmentPreview.filter(a => !a.email || a.email.trim() === "");
     const attendeesWithoutCode = assignmentPreview.filter(a => !a.assigned_code || a.assigned_code === "No code assigned");
     
@@ -164,15 +180,13 @@ function EmailAutomationApp() {
 
     setIsSending(true);
     try {
-      const result = await sendEmails({ 
-        eventName: hackathonName.trim() 
-      });
+      const result = await apiSendEmails(hackathonName.trim());
+      await refreshAll();
       toast.success(`Sent ${result.successCount} emails successfully`);
       if (result.errorCount > 0) {
         toast.error(`Failed to send ${result.errorCount} emails`);
       }
       
-      // Reset the form after successful sending
       if (result.successCount > 0) {
         resetForm();
       } 
@@ -189,6 +203,7 @@ function EmailAutomationApp() {
     setCodes("");
     setHackathonName("");
     setShowPreview(false);
+    void refreshAll();
   };
 
   const handleDeleteAllAttendees = async () => {
@@ -197,22 +212,24 @@ function EmailAutomationApp() {
     }
 
     try {
-      const result = await deleteAllAttendees();
+      const result = await apiDeleteAllAttendees();
+      await refreshAll();
       toast.success(`Deleted ${result.deletedCount} attendees`);
-      setCsvFile(null); // Clear the file state
+      setCsvFile(null);
     } catch (error) {
       toast.error("Failed to delete attendees");
       console.error(error);
     }
   };
 
-  const handleDeleteAttendee = async (attendeeId: string) => {
+  const handleDeleteAttendee = async (attendeeId: any) => {
     if (!confirm("Are you sure you want to delete this attendee? This action cannot be undone.")) {
       return;
     }
 
     try {
-      await deleteAttendee({ attendeeId: attendeeId as any });
+      await apiDeleteAttendee(attendeeId);
+      await refreshAll();
       toast.success("Attendee deleted successfully");
     } catch (error) {
       toast.error("Failed to delete attendee");
@@ -222,7 +239,6 @@ function EmailAutomationApp() {
 
   return (
     <div className="space-y-8">
-      {/* Stats Overview */}
       {emailStats && (
         <div className="bg-white rounded-lg shadow-sm border p-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Overview</h2>
@@ -247,7 +263,6 @@ function EmailAutomationApp() {
         </div>
       )}
 
-      {/* CSV Upload Section */}
       <div className="bg-white rounded-lg shadow-sm border p-6">
         <h2 className="text-xl font-semibold text-gray-900 mb-4">1. Upload CSV File</h2>
         
@@ -281,7 +296,6 @@ function EmailAutomationApp() {
         )}
       </div>
 
-      {/* Code Assignment Section */}
       {checkedInAttendees.length > 0 && (
         <div className="bg-white rounded-lg shadow-sm border p-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">2. Assign Codes</h2>
@@ -355,7 +369,7 @@ function EmailAutomationApp() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             <button
-                              onClick={() => handleDeleteAttendee(attendee._id)}
+                              onClick={() => handleDeleteAttendee(attendee.id ?? attendee._id)}
                               className="text-red-600 hover:text-red-900 transition-colors"
                               title="Delete attendee"
                             >
@@ -428,7 +442,7 @@ function EmailAutomationApp() {
                 <div>
                   {assignmentPreview.length > 0 ? (
                     <EmailPreview 
-                      firstName={assignmentPreview[0].first_name || "Participant"}
+                      firstName={assignmentPreview[0].first_name || "there"}
                       hackathonName={hackathonName || "eg. Cursor Bucharest Hackathon"}
                       redemptionLink={assignmentPreview[0].assigned_code !== "No code assigned" ? assignmentPreview[0].assigned_code : "https://cursor.com/redeem/sample-code"}
                     />
@@ -493,20 +507,20 @@ function EmailAutomationApp() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {sentEmailsHistory.map((sentEmail) => (
-                  <tr key={sentEmail._id}>
+                  <tr key={sentEmail.id}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {sentEmail.first_name} {sentEmail.last_name}
+                      {sentEmail.firstName} {sentEmail.lastName}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {sentEmail.email}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-600 font-mono">
-                      <a href={sentEmail.redemption_link} target="_blank" rel="noopener noreferrer" className="hover:underline">
-                        {sentEmail.redemption_link}
+                      <a href={sentEmail.redemptionLink} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                        {sentEmail.redemptionLink}
                       </a>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(sentEmail.sent_at).toLocaleString()}
+                      {new Date(sentEmail.sentAt).toLocaleString()}
                     </td>
                   </tr>
                 ))}

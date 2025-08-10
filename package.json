@@ -6,26 +6,31 @@
   "scripts": {
     "dev": "npm-run-all --parallel dev:frontend dev:backend",
     "dev:frontend": "vite --open",
-    "dev:backend": "convex dev",
+    "dev:backend": "pnpm --dir backend dev",
     "build": "vite build",
-    "lint": "tsc -p convex -noEmit --pretty false && tsc -p . -noEmit --pretty false && convex dev --once && vite build"
+    "lint": "tsc -p . -noEmit --pretty false && vite build"
   },
   "dependencies": {
-    "@auth/core": "^0.40.0",
-    "@convex-dev/auth": "^0.0.80",
-    "@convex-dev/resend": "^0.1.7",
+    "@hono/node-server": "^1.18.1",
     "@react-email/components": "^0.4.0",
     "@react-email/render": "^1.1.4",
     "clsx": "^2.1.1",
-    "convex": "^1.24.2",
+    "drizzle-orm": "^0.44.4",
+    "hono": "^4.9.0",
+    "node-postgres@latest": "link:drizzle-orm/node-postgres@latest",
+    "pg": "^8.16.3",
+    "pg-core@latest": "link:drizzle-orm/pg-core@latest",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "resend": "^6.0.1",
     "sonner": "^2.0.3",
-    "tailwind-merge": "^3.1.0"
+    "tailwind-merge": "^3.1.0",
+    "zod": "^4.0.17"
   },
   "devDependencies": {
     "@eslint/js": "^9.21.0",
     "@types/node": "^22.13.10",
+    "@types/pg": "^8.15.5",
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
     "@vitejs/plugin-react": "^4.3.4",
