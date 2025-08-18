@@ -83,7 +83,7 @@ CORS_ORIGIN=http://localhost:5173
 - `DATABASE_URL`: PostgreSQL connection string
 - `RESEND_API_KEY`: Get from [Resend.com](https://resend.com) - refer to latest Resend docs for API key setup
 - `MAIL_FROM`: Verified sender email address in Resend - refer to latest Resend docs for custom domain setup
-- `FROM_NAME`: (Optional) Display name for the sender (e.g., "Your Hackathon Team")
+- `FROM_NAME`: (Optional) Display name for the sender
 - `PORT`: Backend server port (default: 8787)
 - `CORS_ORIGIN`: Frontend URL for CORS (default: http://localhost:5173)
 
