@@ -69,9 +69,9 @@ Edit `.env.local` with your actual values:
 DATABASE_URL=postgres://postgres:postgres@localhost:54320/send_hackathon
 
 # Resend Email Service
-RESEND_API_KEY=re_your_actual_resend_api_key_here
-MAIL_FROM=your-email@yourdomain.com
-FROM_NAME=Your Hackathon Team
+RESEND_API_KEY=re_...
+MAIL_FROM=credits@example.com
+FROM_NAME=
 
 # Server Configuration
 PORT=8787
