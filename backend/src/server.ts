@@ -78,7 +78,7 @@ const SendEmailsSchema = z.object({ eventName: z.string().min(1) });
 app.post("/api/emails/send", async (c) => {
   const { eventName } = SendEmailsSchema.parse(await c.req.json());
   
-  console.log(`\nStarting email sending process for event: "${eventName}"`);
+  console.log(`\n📧 \x1b[36mStarting email dispatch\x1b[0m for event: "\x1b[33m${eventName}\x1b[0m"`);
   
   if (!process.env.MAIL_FROM) {
     throw new Error("MAIL_FROM environment variable is required but not set");
@@ -89,7 +89,7 @@ app.post("/api/emails/send", async (c) => {
   const fromName = process.env.FROM_NAME;
   const fromField = fromName ? `${fromName} <${fromEmail}>` : fromEmail;
   
-  console.log(`Sending emails from: ${fromField}`);
+  console.log(`📤 Sender: \x1b[90m${fromField}\x1b[0m`);
   
   // Get attendees who are checked in, have codes, AND haven't been sent emails yet
   const list = await db
@@ -101,7 +101,7 @@ app.post("/api/emails/send", async (c) => {
       ne(attendees.emailSent, true)  // Only get those who haven't been sent emails yet
     ));
 
-  console.log(`Found ${list.length} attendees ready for email (checked in + have codes + not sent yet)`);
+  console.log(`🎯 Found \x1b[32m${list.length}\x1b[0m attendees ready for delivery`);
   
   // Also get counts for debugging
   const allWithCodes = await db
@@ -113,17 +113,16 @@ app.post("/api/emails/send", async (c) => {
   const checkedInWithCodes = allWithCodes.filter(a => a.checkedInAt !== "").length;
   const alreadySent = allWithCodes.filter(a => a.emailSent).length;
   
-  console.log(`Email Delivery Status:`);
-  console.log(`  Codes assigned: ${totalWithCodes}`);
-  console.log(`  Emails delivered: ${alreadySent}`);
-  console.log(`  Pending delivery: ${list.length}`);
-  console.log(`  Validation: ${totalWithCodes} - ${alreadySent} = ${totalWithCodes - alreadySent} (should equal ${list.length})`);
+  console.log(`📊 \x1b[90mDelivery Status:\x1b[0m`);
+  console.log(`   📋 Codes assigned: \x1b[36m${totalWithCodes}\x1b[0m`);
+  console.log(`   ✅ Already sent: \x1b[32m${alreadySent}\x1b[0m`);
+  console.log(`   ⏳ Pending: \x1b[33m${list.length}\x1b[0m`);
   
   if (list.length === 0) {
-    console.log(`WARNING: No attendees to send emails to. Check if:`);
-    console.log(`  1. Attendees are checked in (checkedInAt not empty)`);
-    console.log(`  2. Attendees have assigned codes`); 
-    console.log(`  3. Emails haven't already been sent`);
+    console.log(`⚠️  \x1b[33mNo attendees to process\x1b[0m. Check requirements:`);
+    console.log(`   • Attendees are checked in`);
+    console.log(`   • Have assigned codes`); 
+    console.log(`   • Haven't been sent already`);
     return c.json({ successCount: 0, errorCount: 0 });
   }
   
@@ -138,22 +137,20 @@ app.post("/api/emails/send", async (c) => {
   const sendEmailWithRetry = async (emailData: any, attendee: any, maxRetries = 3) => {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        console.log(`    Sending email to ${attendee.email} with code ${attendee.assignedCode} (attempt ${attempt}/${maxRetries})`);
+        console.log(`Sending: 📤 \x1b[90mAttempt ${attempt}/${maxRetries}\x1b[0m`);
         
         const emailResult = await resend.emails.send(emailData);
-        
-        console.log(`    Resend response for ${attendee.email}:`, JSON.stringify(emailResult, null, 2));
 
         // Check if the email was actually sent successfully
         if (!emailResult.data?.id) {
-          console.log(`    ERROR: No ID returned for ${attendee.email} (code: ${attendee.assignedCode})`);
-          console.log(`    Response data:`, emailResult.data);
-          console.log(`    Response error:`, emailResult.error);
+          console.log(`  Error: ❌ \x1b[31mNo ID returned\x1b[0m`);
+          console.log(`   Data: \x1b[90m${JSON.stringify(emailResult.data)}\x1b[0m`);
+          console.log(`  Error: \x1b[90m${JSON.stringify(emailResult.error)}\x1b[0m`);
           
           // If we have retries left, wait and retry with exponential backoff
           if (attempt < maxRetries) {
             const backoffDelay = 1000 * Math.pow(2, attempt); // 2s, 4s, 8s
-            console.log(`    Error occurred, waiting ${backoffDelay}ms before retry ${attempt + 1}`);
+            console.log(`  Retry: ⏳ \x1b[33m${backoffDelay}ms\x1b[0m`);
             await sleep(backoffDelay);
             continue;
           }
@@ -161,11 +158,11 @@ app.post("/api/emails/send", async (c) => {
           throw new Error(`Resend failed to send email to ${attendee.email}: ${JSON.stringify(emailResult.error)}`);
         }
 
-        console.log(`    SUCCESS: Email sent to ${attendee.email} (code: ${attendee.assignedCode}, Resend ID: ${emailResult.data.id})`);
+        console.log(` Result: ✅ \x1b[32mSent\x1b[0m (ID: \x1b[90m${emailResult.data.id}\x1b[0m)`);
         return emailResult;
         
       } catch (error) {
-        console.log(`    FAILED: Attempt ${attempt} for ${attendee.email} (code: ${attendee.assignedCode}):`, error);
+        console.log(`  Error: ❌ \x1b[31mAttempt ${attempt}:\x1b[0m ${error}`);
         
         if (attempt === maxRetries) {
           throw error; // Re-throw on final attempt
@@ -173,7 +170,7 @@ app.post("/api/emails/send", async (c) => {
         
         // Wait before retry (exponential backoff)
         const backoffDelay = 1000 * Math.pow(2, attempt);
-        console.log(`    Waiting ${backoffDelay}ms before retry ${attempt + 1}`);
+        console.log(`Backoff: ⏳ \x1b[33m${backoffDelay}ms\x1b[0m`);
         await sleep(backoffDelay);
       }
     }
@@ -181,26 +178,25 @@ app.post("/api/emails/send", async (c) => {
 
   for (let i = 0; i < list.length; i++) {
     const a = list[i];
-    const attendeeInfo = `Attendee ${i + 1}/${list.length}: ${a.name || 'No name'} (${a.email || 'No email'})`;
     
-    console.log(`\nProcessing ${attendeeInfo}`);
-    console.log(`  Redemption code: ${a.assignedCode}`);
+    console.log(`\n${'─'.repeat(60)}`);
+    console.log(`👤 \x1b[36m${i + 1}/${list.length}\x1b[0m - \x1b[1m${a.name || 'No name'}\x1b[0m`);
+    console.log(`  Email: \x1b[1m\x1b[33m${a.email}\x1b[0m`);
+    console.log(`Payload: \x1b[1m\x1b[32m${a.assignedCode}\x1b[0m`);
     
     try {
       // Validate email and assigned code
       if (!a.email?.trim()) {
-        console.log(`  SKIPPED - No email address for ${a.name || 'attendee'} (would have used code: ${a.assignedCode || 'N/A'})`);
+        console.log(` Status: ⏭️ \x1b[33mSkipped - no email\x1b[0m`);
         errorCount++;
         continue;
       }
       
       if (!a.assignedCode) {
-        console.log(`  SKIPPED - No assigned code for ${a.email}`);
+        console.log(` Status: ⏭️ \x1b[33mSkipped - no code\x1b[0m`);
         errorCount++;
         continue;
       }
-      
-      console.log(`  Rendering email for ${a.email} with code: ${a.assignedCode}`);
       
       const html = await render(
         HackathonCodeEmail({
@@ -218,8 +214,7 @@ app.post("/api/emails/send", async (c) => {
         html,
       }, a);
 
-      console.log(`  Updating database for ${a.email} (code: ${a.assignedCode})`);
-      
+      // Update database
       await db.update(attendees).set({ emailSent: true }).where(eq(attendees.id, a.id));
       await db.insert(sentEmails).values({
         email: a.email,
@@ -230,25 +225,24 @@ app.post("/api/emails/send", async (c) => {
       });
 
       successCount++;
-      console.log(`  COMPLETED: ${a.email} → ${a.assignedCode}`);
+      console.log(` Status: ✅ \x1b[32mDelivered\x1b[0m`);
       
       // Rate limiting: wait 600ms between emails (allows ~1.6 emails/second, safely under 2/second limit)
       if (i < list.length - 1) { // Don't wait after the last email
-        console.log(`  Waiting 600ms for rate limiting`);
+        console.log(`  Pause: ⏱️ \x1b[90m600ms...\x1b[0m`);
         await sleep(600);
       }
       
     } catch (error) {
-      console.log(`  FAILED to send email to ${a.email} (code: ${a.assignedCode}):`, error);
-      console.log(`  CRITICAL: Code ${a.assignedCode} was NOT delivered to ${a.email}!`);
+      console.log(` Status: 💥 \x1b[31mFailed:\x1b[0m`, error);
       errorCount++;
     }
   }
   
-  console.log(`\nEmail Sending Summary:`);
-  console.log(`  Successfully sent: ${successCount}`);
-  console.log(`  Failed/Invalid: ${errorCount}`);
-  console.log(`  Total processed: ${list.length}`);
+  console.log(`\n📈 \x1b[36mDispatch Summary:\x1b[0m`);
+  console.log(`   ✅ Sent: \x1b[32m${successCount}\x1b[0m`);
+  console.log(`   ❌ Failed: \x1b[31m${errorCount}\x1b[0m`);
+  console.log(`   📊 Total: \x1b[90m${list.length}\x1b[0m`);
   
   return c.json({ successCount, errorCount });
 });
