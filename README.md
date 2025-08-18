@@ -133,6 +133,36 @@ pnpm dev:backend
 pnpm dev:frontend
 ```
 
+## Available Scripts
+
+### Root Directory Commands
+
+- `pnpm dev` - Start both frontend and backend servers in parallel using coordinated script
+- `pnpm dev:frontend` - Start frontend development server only (opens browser automatically)
+- `pnpm dev:backend` - Start backend development server only
+- `pnpm build` - Build frontend for production
+- `pnpm lint` - Run TypeScript type checking and build validation
+- `pnpm kill-port` - Kill any process using port 8787 (useful for cleanup)
+
+### Backend Commands
+
+Run these from the `backend/` directory:
+
+- `pnpm dev` - Start backend development server with file watching
+- `pnpm build` - Build backend for production
+- `pnpm start` - Start production server (requires build first)
+- `pnpm db:generate` - Generate database migration files
+- `pnpm db:push` - Push database schema changes to PostgreSQL
+- `pnpm db:studio` - Open Drizzle Studio for database management
+
+### Docker Commands
+
+- `docker-compose up -d` - Start PostgreSQL database in background
+- `docker-compose ps` - Check database status
+- `docker-compose logs postgres` - View database logs
+- `docker-compose restart` - Restart database
+- `docker-compose down` - Stop and remove database container
+
 ## Usage Guide
 
 ### 1. Export Attendee Data from Luma

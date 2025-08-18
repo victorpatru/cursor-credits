@@ -706,22 +706,22 @@ function EmailPreview({ name, hackathonName, redemptionLink }: {
           </h2>
           
           <p className="text-gray-600 text-center">
-            Hi {name}! Thank you for checking in to our event. Here's your unique access code that you can use to claim your Cursor credits.
+            Hi {name}! Thank you for checking in to our event. Here's your personalized link to redeem your Cursor credits.
           </p>
           
           {/* Link Button */}
           <div className="text-center py-4">
             <div className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold">
-              Claim Your Cursor Credits
+              Redeem your credits
             </div>
           </div>
           
           <p className="text-gray-600 text-center text-sm">
-            Simply click the button above to instantly claim your free Cursor credits for the hackathon.
+            Simply click the button above to instantly redeem your Cursor credits for the hackathon.
           </p>
           
           <p className="text-gray-500 text-center text-xs mt-4">
-            If you didn't attend this event or received this email by mistake, please contact our support team.
+            If you didn't attend this event or received this email by mistake, please just ignore it.
           </p>
           
           <div className="text-center text-gray-500 text-xs pt-4 border-t">
