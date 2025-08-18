@@ -1,15 +1,18 @@
 # Send Hackathon Credits App
+*Version 1.1*
 
 A full-stack application for managing hackathon attendees and sending email credits to checked-in participants.
 
 ## Features
 
-- 📊 Upload attendee CSV data
-- ✅ Track checked-in attendees
-- 🎟️ Assign redemption codes to attendees
-- 📧 Send automated emails with credits
-- 📈 View email statistics and history
-- 🗄️ PostgreSQL database with Drizzle ORM
+- Upload attendee CSV data
+- Track checked-in attendees
+- Assign referral URLs to attendees
+- Send automated emails with credits
+- View email statistics and history
+- PostgreSQL database with Drizzle ORM
+- Delete all data functionality with confirmation
+- Improved error handling with timeout and retry logic
 
 ## Tech Stack
 
@@ -34,7 +37,7 @@ Before you begin, ensure you have the following installed:
 
 ```bash
 git clone <repository-url>
-cd send-hackathon-code
+cd cursor-credits
 ```
 
 ### 2. Install Dependencies
@@ -68,6 +71,7 @@ DATABASE_URL=postgres://postgres:postgres@localhost:54320/send_hackathon
 # Resend Email Service
 RESEND_API_KEY=re_your_actual_resend_api_key_here
 MAIL_FROM=your-email@yourdomain.com
+FROM_NAME=Your Hackathon Team
 
 # Server Configuration
 PORT=8787
@@ -79,6 +83,7 @@ CORS_ORIGIN=http://localhost:5173
 - `DATABASE_URL`: PostgreSQL connection string
 - `RESEND_API_KEY`: Get from [Resend.com](https://resend.com) - refer to latest Resend docs for API key setup
 - `MAIL_FROM`: Verified sender email address in Resend - refer to latest Resend docs for custom domain setup
+- `FROM_NAME`: (Optional) Display name for the sender (e.g., "Your Hackathon Team")
 - `PORT`: Backend server port (default: 8787)
 - `CORS_ORIGIN`: Frontend URL for CORS (default: http://localhost:5173)
 
@@ -145,15 +150,14 @@ Before uploading data to the app, you need to export your attendee list from Lum
 3. **Export the Data:**
    - Look for an "Export" or "Download" option
    - Export the attendee list as a CSV file
-   - The exported CSV should include: `email`, `first_name`, `last_name`, and `checked_in_at` columns
+   - The exported CSV should include: `email`, `name`, and `checked_in_at` columns
    
    ![Luma Export Process](luma-export.png)
 
 4. **Verify CSV Format:**
    - Ensure your CSV has the required columns:
      - `email`: Attendee email address
-     - `first_name`: First name
-     - `last_name`: Last name  
+     - `name`: Full name
      - `checked_in_at`: Check-in timestamp
 
 ### 2. Upload Attendee Data
@@ -162,20 +166,19 @@ Before uploading data to the app, you need to export your attendee list from Lum
 2. Upload a CSV file with attendee data
 3. Required CSV columns:
    - `email`: Attendee email address
-   - `first_name`: First name
-   - `last_name`: Last name  
+   - `name`: Full name
    - `checked_in_at`: Check-in timestamp (empty string for not checked in)
 
-### 3. Assign Redemption Codes
+### 3. Assign Referral URLs
 
-1. Paste redemption codes (one per line) in the "Assign Codes" section
-2. Click "Assign Codes" to distribute them to checked-in attendees
+1. Paste referral URLs (one per line) in the "Assign Referral URLs" section
+2. Click "Assign Referral URLs" to distribute them to checked-in attendees
 
 ### 4. Send Emails
 
 1. Set a custom hackathon event name
 2. Preview the email template
-3. Click "Send Emails" to send credits to all checked-in attendees with assigned codes
+3. Click "Send Emails" to send credits to all checked-in attendees with assigned referral URLs
 4. Monitor the progress and view sent email history
 
 ### 5. View Statistics
@@ -183,7 +186,7 @@ Before uploading data to the app, you need to export your attendee list from Lum
 The dashboard shows:
 - Total attendees uploaded
 - Number of checked-in attendees
-- Attendees with assigned codes
+- Attendees with assigned referral URLs
 - Emails sent successfully
 
 ## API Endpoints
@@ -192,10 +195,11 @@ The backend provides the following REST API endpoints:
 
 - `POST /api/attendees/upload` - Upload CSV attendee data
 - `GET /api/attendees/checked-in` - Get checked-in attendees
-- `POST /api/attendees/assign-codes` - Assign redemption codes
-- `GET /api/attendees/assignment-preview` - Preview code assignments
+- `POST /api/attendees/assign-codes` - Assign referral URLs
+- `GET /api/attendees/assignment-preview` - Preview referral URL assignments
 - `POST /api/emails/send` - Send emails to attendees
 - `GET /api/sent-emails` - Get sent email history
+- `POST /api/sent-emails/delete-all` - Delete all sent email history
 - `GET /api/stats` - Get system statistics
 - `POST /api/attendees/delete-all` - Delete all attendees
 - `DELETE /api/attendees/:id` - Delete specific attendee
@@ -205,22 +209,68 @@ The backend provides the following REST API endpoints:
 ### Attendees Table
 - `id`: Primary key
 - `email`: Email address
-- `firstName`: First name
-- `lastName`: Last name
+- `name`: Full name
 - `checkedInAt`: Check-in timestamp
-- `assignedCode`: Redemption code
+- `assignedCode`: Referral URL
 - `emailSent`: Boolean flag
 - `createdAt`: Creation timestamp
 
 ### Sent Emails Table
 - `id`: Primary key
 - `email`: Recipient email
-- `firstName`: First name
-- `lastName`: Last name
-- `redemptionLink`: Redemption code/link
+- `name`: Full name
+- `redemptionLink`: Referral URL
 - `eventName`: Event name
 - `checkedInAt`: Original check-in time
 - `sentAt`: Email sent timestamp
+
+## Changelog
+
+### Version 1.1
+
+#### **Added**
+- `FROM_NAME` environment variable for custom sender names
+- Rate limiting: 600ms delays between emails (required by Resend API)
+- Retry logic with exponential backoff for email sending
+- Graceful server shutdown handling
+- Comprehensive email sending logs
+- Delete all data functionality with confirmation
+- Request timeout protection (10 seconds)
+- Counter for attendees eligible for email sending
+- Loading states and error handling
+- `dev.js` script for coordinated server startup and shutdown
+
+#### **Changed**
+- Email copy from "claim" to "redeem"
+- Database schema: combined `first_name` and `last_name` into single `name` field (some users lacked first names)
+- Terminology from "codes" to "referral URLs" throughout UI
+- Email template: removed footer section and emojis according to Cursor's style guide
+
+#### **Development**
+- Added workspace development rules
+- Updated terminal handling to preserve logs
+- Added CSV files to gitignore
+
+### Version 1.0 (Main Branch) - Initial Release
+- CSV upload and attendee management
+- Email sending with React Email templates
+- PostgreSQL database with Drizzle ORM
+- REST API with Hono.js
+- Frontend with React and Tailwind CSS
+
+## TODO
+
+### Development & Code Quality
+- Format all files in project with prettier
+- Add git commit hook for automatic prettier formatting
+- Add git commit hook for conventional commit messages
+
+### Testing & Validation
+- Update template preview to match current template
+- Test consecutive sending of credits (multiple rounds)
+- Test edge cases with mismatched quantities (more/fewer codes than attendees)
+- Test behavior with duplicate emails or invalid referral URLs
+- Test email sending with network interruptions
 
 ## Troubleshooting
 
@@ -245,6 +295,17 @@ The backend provides the following REST API endpoints:
 - Ensure `.env.local` exists in the root directory
 - Check file permissions
 - Restart the development servers
+
+**Email Sending Issues (v1.1+):**
+- Check rate limiting if emails are failing (600ms delay between sends)
+- Monitor console logs for detailed error information
+- Verify all attendees have both check-in status AND assigned referral URLs
+- Check the dashboard counter showing attendees eligible for email (checked in + have referral URLs + not sent yet)
+
+**Request Timeout Errors (v1.1+):**
+- Frontend now has 10-second timeout protection
+- If requests timeout, check backend server logs
+- Restart development servers if connection issues persist
 
 ### Logs and Debugging
 
