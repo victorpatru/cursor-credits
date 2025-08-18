@@ -26,13 +26,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Email template: removed footer section and emojis according to Cursor's style guide
 
 ### Development
-- Added workspace development rules
-- Updated terminal handling to preserve logs
-- Added CSV files to gitignore
 - Migrated to pnpm workspaces for unified dependency management
-- Single `pnpm install` command now installs all dependencies
-- Added workspace-aware npm scripts for backend commands from root directory
-- Unified build process: `pnpm build` now builds both frontend and backend
+- Single `pnpm install` command installs all dependencies, `pnpm build` builds entire project
+- All backend commands now available from root directory
 
 ## [1.0.0] - Initial Release
 
