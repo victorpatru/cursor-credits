@@ -11,10 +11,10 @@ import {
 } from "@react-email/components";
 
 export function HackathonCodeEmail({
-  firstName,
+  name,
   redemptionLink = "https://cursor.com/redeem/ABC-123",
   eventName = "Hackathon Event",
-}: { firstName?: string; redemptionLink?: string; eventName?: string }) {
+}: { name?: string; redemptionLink?: string; eventName?: string }) {
   return (
     <Html>
       <Head />
@@ -22,37 +22,26 @@ export function HackathonCodeEmail({
         <Preview>Your hackathon credits are ready!</Preview>
         <Container style={container}>
           <Section style={logoContainer}>
-            <Text style={logoText}>🚀 {eventName}</Text>
+            <Text style={logoText}>{eventName}</Text>
           </Section>
           <Heading style={h1}>Your hackathon credits are ready!</Heading>
           <Text style={heroText}>
-            Hi {firstName ?? "there"}! Thank you for checking in to our event. Here's your personalized link to claim your free Cursor credits.
+            Hi {name ?? "there"}! Thank you for checking in to our event. Here's your personalized link to redeem your Cursor credits.
           </Text>
 
           <Section style={linkBox}>
             <Link href={redemptionLink} style={linkButton}>
-              Claim Your Cursor Credits
+              Redeem your credits
             </Link>
           </Section>
 
           <Text style={text}>
-            Simply click the button above to instantly claim your free Cursor credits for the hackathon.
+            Simply click the button above to instantly redeem your Cursor credits for the hackathon.
           </Text>
 
           <Text style={text}>
-            If you didn't attend this event or received this email by mistake, please contact our support team.
+            If you didn't attend this event or received this email by mistake, please just ignore it.
           </Text>
-
-          <Section style={spacer}>
-            <Text style={footerText}>
-              Have an amazing time at the hackathon! 🎯
-              <br />
-              <br />
-              Best regards,
-              <br />
-              The {eventName} Team
-            </Text>
-          </Section>
         </Container>
       </Body>
     </Html>
@@ -109,7 +98,7 @@ const linkBox = {
 };
 
 const linkButton = {
-  backgroundColor: "#007ee6",
+  backgroundColor: "#6E54D7",
   borderRadius: "8px",
   color: "#ffffff",
   fontSize: "18px",
@@ -128,19 +117,6 @@ const text = {
   lineHeight: "24px",
   marginBottom: "16px",
   textAlign: "center" as const,
-};
-
-const spacer = {
-  marginTop: "40px",
-  marginBottom: "40px",
-};
-
-const footerText = {
-  fontSize: "14px",
-  color: "#6b7280",
-  lineHeight: "20px",
-  textAlign: "center" as const,
-  marginBottom: "50px",
 };
 
 
