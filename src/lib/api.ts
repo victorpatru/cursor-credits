@@ -66,4 +66,10 @@ export const deleteAttendee = async (id: number) => {
   return r.json();
 };
 
+export const deleteAllSentEmails = async () => {
+  const r = await fetch(`${BASE}/api/sent-emails/delete-all`, { method: "POST" });
+  if (!r.ok) throw new Error("Delete all sent emails failed");
+  return r.json();
+};
+
 

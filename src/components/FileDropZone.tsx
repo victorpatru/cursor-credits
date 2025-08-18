@@ -113,7 +113,7 @@ export function FileDropZone({
             or <span className="text-blue-600 font-medium">click to browse</span>
           </p>
           <p className="text-xs text-gray-400 mt-2">
-            Supports Luma exported CSV that contains the following columns: email, first_name, last_name, checked_in_at
+            Supports Luma exported CSV that contains the following columns: email, name, checked_in_at
           </p>
         </div>
         

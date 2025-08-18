@@ -8,6 +8,7 @@ import {
   getStats,
   getSentEmails,
   deleteAllAttendees as apiDeleteAllAttendees,
+  deleteAllSentEmails as apiDeleteAllSentEmails,
   deleteAttendee as apiDeleteAttendee,
 } from "./lib/api";
 import { FileDropZone } from "./components/FileDropZone";
@@ -46,23 +47,46 @@ function EmailAutomationApp() {
   const [isUploading, setIsUploading] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const [checkedInAttendees, setCheckedInAttendees] = useState<any[]>([]);
   const [assignmentPreview, setAssignmentPreview] = useState<any[]>([]);
-  const [emailStats, setEmailStats] = useState<any | null>(null);
+  const [emailStats, setEmailStats] = useState<any>({ total: 0, checkedIn: 0, withCodes: 0, emailsSent: 0, eligibleForEmail: 0 });
   const [sentEmailsHistory, setSentEmailsHistory] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   const refreshAll = async () => {
-    const [a, b, c, d] = await Promise.all([
-      getCheckedIn(),
-      getAssignmentPreview(),
-      getStats(),
-      getSentEmails(),
-    ]);
-    setCheckedInAttendees(a);
-    setAssignmentPreview(b);
-    setEmailStats(c);
-    setSentEmailsHistory(d);
+    try {
+      setIsLoading(true);
+      setApiError(null);
+      
+      // Add timeout to prevent hanging
+      const timeout = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Request timeout')), 10000) // 10 second timeout
+      );
+      
+      const dataPromise = Promise.all([
+        getCheckedIn(),
+        getAssignmentPreview(),
+        getStats(),
+        getSentEmails(),
+      ]);
+      
+      const [a, b, c, d] = await Promise.race([dataPromise, timeout]);
+      
+      setCheckedInAttendees(a);
+      setAssignmentPreview(b);
+      setEmailStats(c);
+      setSentEmailsHistory(d);
+    } catch (error) {
+      console.error('Failed to fetch data:', error);
+      setApiError('Failed to connect to backend server. Make sure it\'s running on port 8787.');
+      toast.error('Failed to load data from server');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -116,8 +140,7 @@ function EmailAutomationApp() {
         if (row.checked_in_at && row.checked_in_at !== "") {
           csvData.push({
             email: row.email || "",
-            first_name: row.first_name || "",
-            last_name: row.last_name || "",
+            name: row.name || "",
             checked_in_at: row.checked_in_at,
           });
         } else {
@@ -140,16 +163,16 @@ function EmailAutomationApp() {
     const codeList = codes.split('\n').filter(code => code.trim()).map(code => code.trim());
     
     if (codeList.length === 0) {
-      toast.error("Please enter some codes");
+      toast.error("Please enter some referral URLs");
       return;
     }
 
     try {
       const result = await apiAssignCodes(codeList);
       await refreshAll();
-      toast.success(`Assigned ${result.assigned} codes`);
+      toast.success(`Assigned ${result.assigned} referral URLs`);
     } catch (error) {
-      toast.error("Failed to assign codes");
+      toast.error("Failed to assign referral URLs");
       console.error(error);
     }
   };
@@ -169,12 +192,12 @@ function EmailAutomationApp() {
     }
     
     if (attendeesWithoutCode.length > 0) {
-      toast.error(`${attendeesWithoutCode.length} attendee(s) don't have assigned codes. Please assign codes to all attendees before sending emails.`);
+      toast.error(`${attendeesWithoutCode.length} attendee(s) don't have assigned referral URLs. Please assign referral URLs to all attendees before sending emails.`);
       return;
     }
     
     if (assignmentPreview.length === 0) {
-      toast.error("No attendees found to send emails to. Please upload a CSV and assign codes first.");
+      toast.error("No attendees found to send emails to. Please upload a CSV and assign referral URLs first.");
       return;
     }
 
@@ -237,27 +260,147 @@ function EmailAutomationApp() {
     }
   };
 
+  const handleDeleteAllData = async () => {
+    setIsDeleting(true);
+    try {
+      const [attendeesResult, sentEmailsResult] = await Promise.all([
+        apiDeleteAllAttendees(),
+        apiDeleteAllSentEmails()
+      ]);
+      
+      await refreshAll();
+      setCsvFile(null);
+      setCodes("");
+      setHackathonName("");
+      setShowPreview(false);
+      
+      toast.success(
+        `Successfully deleted ${attendeesResult.deletedCount} attendees and ${sentEmailsResult.deletedCount} sent emails`
+      );
+    } catch (error) {
+      toast.error("Failed to delete all data");
+      console.error(error);
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
+
   return (
     <div className="space-y-8">
-      {emailStats && (
-        <div className="bg-white rounded-lg shadow-sm border p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Overview</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">{emailStats.total}</div>
-              <div className="text-sm text-gray-600">Total Attendees</div>
+      {/* Overview Section - Always visible */}
+      <div className="bg-white rounded-lg shadow-sm border p-6">
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">Overview</h2>
+        
+        {isLoading ? (
+          <div className="flex justify-center items-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <span className="ml-2 text-gray-600">Loading...</span>
+          </div>
+        ) : apiError ? (
+          <div className="bg-red-50 border border-red-200 rounded-md p-4">
+            <div className="flex">
+              <div className="text-red-400">⚠️</div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-red-800">Connection Error</h3>
+                <p className="text-sm text-red-700 mt-1">{apiError}</p>
+                <button 
+                  onClick={refreshAll}
+                  className="mt-2 text-sm text-red-600 hover:text-red-800 underline"
+                >
+                  Retry
+                </button>
+              </div>
             </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">{emailStats.checkedIn}</div>
-              <div className="text-sm text-gray-600">Checked In</div>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-600">{emailStats.total}</div>
+                <div className="text-sm text-gray-600">Total Attendees</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-green-600">{emailStats.checkedIn}</div>
+                <div className="text-sm text-gray-600">Checked In</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-purple-600">{emailStats.withCodes}</div>
+                <div className="text-sm text-gray-600">With Referral URLs</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-yellow-600">{emailStats.eligibleForEmail}</div>
+                <div className="text-sm text-gray-600">Ready to Email</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-orange-600">{emailStats.emailsSent}</div>
+                <div className="text-sm text-gray-600">Emails Sent</div>
+              </div>
             </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">{emailStats.withCodes}</div>
-              <div className="text-sm text-gray-600">With Codes</div>
+            
+            {/* Delete All Data Button */}
+            {(emailStats.total > 0 || emailStats.emailsSent > 0) && (
+              <div className="mt-6 pt-4 border-t border-gray-200">
+                <div className="flex justify-center">
+                  <button
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors"
+                    disabled={isDeleting}
+                  >
+                    {isDeleting ? "Deleting..." : "🗑️ Delete All Data"}
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500 text-center mt-2">
+                  This will delete all attendees and sent email history
+                </p>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Confirmation Dialog */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="flex items-center mb-4">
+              <div className="flex-shrink-0">
+                <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                  <span className="text-red-600 text-lg">⚠️</span>
+                </div>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-lg font-medium text-gray-900">Delete All Data</h3>
+                <p className="text-sm text-gray-500">This action cannot be undone</p>
+              </div>
             </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-orange-600">{emailStats.emailsSent}</div>
-              <div className="text-sm text-gray-600">Emails Sent</div>
+            
+            <div className="mb-6">
+              <p className="text-sm text-gray-700">
+                Are you sure you want to delete <strong>all data</strong>? This will permanently remove:
+              </p>
+              <ul className="mt-2 text-sm text-gray-600 list-disc list-inside space-y-1">
+                <li>All uploaded attendees ({emailStats?.total || 0} total)</li>
+                <li>All sent email history ({emailStats?.emailsSent || 0} emails)</li>
+                <li>All assigned referral URLs</li>
+              </ul>
+            </div>
+            
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteAllData}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                disabled={isDeleting}
+              >
+                {isDeleting ? "Deleting..." : "Delete All Data"}
+              </button>
             </div>
           </div>
         </div>
@@ -298,9 +441,12 @@ function EmailAutomationApp() {
 
       {checkedInAttendees.length > 0 && (
         <div className="bg-white rounded-lg shadow-sm border p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">2. Assign Codes</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">2. Assign Referral URLs</h2>
           <p className="text-gray-600 mb-4">
-            Enter codes (one per line) to assign to checked-in attendees
+            Enter referral URLs (one per line) to assign to checked-in attendees
+          </p>
+          <p className="text-sm text-gray-500 mb-4">
+            Example: <code className="bg-gray-100 px-2 py-1 rounded">https://cursor.com/referral?code=123456789012</code>
           </p>
           
           <div className="space-y-4">
@@ -320,7 +466,7 @@ function EmailAutomationApp() {
             <textarea
               value={codes}
               onChange={(e) => setCodes(e.target.value)}
-              placeholder="Enter codes here, one per line..."
+              placeholder="Enter referral URLs here, one per line..."
               className="w-full h-32 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
             
@@ -329,7 +475,7 @@ function EmailAutomationApp() {
               disabled={!codes.trim()}
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Assign Codes
+              Assign Referral URLs
             </button>
             
             {assignmentPreview.length > 0 && (
@@ -340,7 +486,7 @@ function EmailAutomationApp() {
                     <thead className="bg-gray-50">
                       <tr>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          First Name
+                          Name
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Email
@@ -357,7 +503,7 @@ function EmailAutomationApp() {
                       {assignmentPreview.map((attendee, index) => (
                         <tr key={attendee._id || index}>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {attendee.first_name}
+                            {attendee.name}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             {attendee.email}
@@ -415,7 +561,7 @@ function EmailAutomationApp() {
                             <p>{attendeesWithoutEmail.length} attendee(s) are missing email addresses</p>
                           )}
                           {attendeesWithoutCode.length > 0 && (
-                            <p>{attendeesWithoutCode.length} attendee(s) don't have assigned codes</p>
+                            <p>{attendeesWithoutCode.length} attendee(s) don't have assigned referral URLs</p>
                           )}
                           <p className="font-medium">Please fix these issues before sending emails.</p>
                         </div>
@@ -442,14 +588,14 @@ function EmailAutomationApp() {
                 <div>
                   {assignmentPreview.length > 0 ? (
                     <EmailPreview 
-                      firstName={assignmentPreview[0].first_name || "there"}
+                      name={assignmentPreview[0].name || "there"}
                       hackathonName={hackathonName || "eg. Cursor Bucharest Hackathon"}
                       redemptionLink={assignmentPreview[0].assigned_code !== "No code assigned" ? assignmentPreview[0].assigned_code : "https://cursor.com/redeem/sample-code"}
                     />
                   ) : (
                     <div className="border border-gray-200 rounded-lg p-6 bg-gray-50 text-center">
                       <p className="text-gray-500">
-                        📝 Upload attendees and assign codes to see the email preview with real data
+                        📝 Upload attendees and assign referral URLs to see the email preview with real data
                       </p>
                     </div>
                   )}
@@ -509,7 +655,7 @@ function EmailAutomationApp() {
                 {sentEmailsHistory.map((sentEmail) => (
                   <tr key={sentEmail.id}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {sentEmail.firstName} {sentEmail.lastName}
+                      {sentEmail.name}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {sentEmail.email}
@@ -540,8 +686,8 @@ function EmailAutomationApp() {
 }
 
 // Email Preview Component
-function EmailPreview({ firstName, hackathonName, redemptionLink }: {
-  firstName: string;
+function EmailPreview({ name, hackathonName, redemptionLink }: {
+  name: string;
   hackathonName: string;
   redemptionLink: string;
 }) {
@@ -560,7 +706,7 @@ function EmailPreview({ firstName, hackathonName, redemptionLink }: {
           </h2>
           
           <p className="text-gray-600 text-center">
-            Hi {firstName}! Thank you for checking in to our event. Here's your unique access code that you can use to claim your Cursor credits.
+            Hi {name}! Thank you for checking in to our event. Here's your unique access code that you can use to claim your Cursor credits.
           </p>
           
           {/* Link Button */}
