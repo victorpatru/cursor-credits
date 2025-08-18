@@ -1,6 +1,5 @@
 # Send Hackathon Credits App
-*Version 1.1*  
-**[View Changelog](CHANGELOG.md)** - See version history and features
+Version 1.1 - See [CHANGELOG](CHANGELOG.md)
 
 A full-stack application for managing hackathon attendees and sending email credits to checked-in participants.
 
