@@ -1,12 +1,13 @@
 {
-  "name": "flex-template",
+  "name": "cursor-credits",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.1.0",
   "type": "module",
   "scripts": {
-    "dev": "npm-run-all --parallel dev:frontend dev:backend",
+    "dev": "node scripts/dev.js",
     "dev:frontend": "vite --open",
     "dev:backend": "pnpm --dir backend dev",
+    "kill-port": "lsof -ti:8787 | xargs kill -9 2>/dev/null || echo 'Port 8787 is free'",
     "build": "vite build",
     "lint": "tsc -p . -noEmit --pretty false && vite build"
   },
