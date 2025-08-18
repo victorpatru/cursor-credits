@@ -150,10 +150,10 @@ app.post("/api/emails/send", async (c) => {
           console.log(`    Response data:`, emailResult.data);
           console.log(`    Response error:`, emailResult.error);
           
-          // If it's a rate limit error and we have retries left, wait longer and retry
-          if (emailResult.error?.statusCode === 429 && attempt < maxRetries) {
+          // If we have retries left, wait and retry with exponential backoff
+          if (attempt < maxRetries) {
             const backoffDelay = 1000 * Math.pow(2, attempt); // 2s, 4s, 8s
-            console.log(`    Rate limited, waiting ${backoffDelay}ms before retry ${attempt + 1}`);
+            console.log(`    Error occurred, waiting ${backoffDelay}ms before retry ${attempt + 1}`);
             await sleep(backoffDelay);
             continue;
           }

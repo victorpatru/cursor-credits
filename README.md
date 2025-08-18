@@ -1,5 +1,6 @@
 # Send Hackathon Credits App
-*Version 1.1*
+*Version 1.1*  
+**[View Changelog](CHANGELOG.md)** - See version history and features
 
 A full-stack application for managing hackathon attendees and sending email credits to checked-in participants.
 
@@ -42,17 +43,13 @@ cd cursor-credits
 
 ### 2. Install Dependencies
 
-Install dependencies for both frontend and backend:
+Install all dependencies with a single command (uses pnpm workspaces):
 
 ```bash
-# Install frontend dependencies
 pnpm install
-
-# Install backend dependencies
-cd backend
-pnpm install
-cd ..
 ```
+
+**Note:** This project uses pnpm workspaces to manage frontend and backend dependencies together. All backend commands can be run from the root directory (e.g., `pnpm db:generate`, `pnpm dev:backend`).
 
 ### 3. Set Up Environment Variables
 
@@ -81,8 +78,8 @@ CORS_ORIGIN=http://localhost:5173
 **Required Environment Variables:**
 
 - `DATABASE_URL`: PostgreSQL connection string
-- `RESEND_API_KEY`: Get from [Resend.com](https://resend.com) - refer to latest Resend docs for API key setup
-- `MAIL_FROM`: Verified sender email address in Resend - refer to latest Resend docs for custom domain setup
+- `RESEND_API_KEY`: Get from [Resend.com](https://resend.com) - see Resend documentation for API key setup
+- `MAIL_FROM`: Verified sender email address in Resend - see Resend documentation for custom domain setup
 - `FROM_NAME`: (Optional) Display name for the sender
 - `PORT`: Backend server port (default: 8787)
 - `CORS_ORIGIN`: Frontend URL for CORS (default: http://localhost:5173)
@@ -99,12 +96,10 @@ This will start a PostgreSQL database on `localhost:54320`.
 
 ### 5. Set Up Database Schema
 
-Navigate to the backend directory and run the database migrations:
+Run database migrations from the root directory:
 
 ```bash
-cd backend
 pnpm db:push
-cd ..
 ```
 
 This creates the necessary tables (`attendees` and `sent_emails`).
@@ -140,20 +135,22 @@ pnpm dev:frontend
 - `pnpm dev` - Start both frontend and backend servers in parallel using coordinated script
 - `pnpm dev:frontend` - Start frontend development server only (opens browser automatically)
 - `pnpm dev:backend` - Start backend development server only
-- `pnpm build` - Build frontend for production
+- `pnpm build` - Build both frontend and backend for production
+- `pnpm build:frontend` - Build frontend only
+- `pnpm build:backend` - Build backend only
+- `pnpm db:generate` - Generate database migration files
+- `pnpm db:push` - Push database schema changes to PostgreSQL
+- `pnpm db:studio` - Open Drizzle Studio for database management
 - `pnpm lint` - Run TypeScript type checking and build validation
 - `pnpm kill-port` - Kill any process using port 8787 (useful for cleanup)
 
 ### Backend Commands
 
-Run these from the `backend/` directory:
+Backend-specific commands (can be run from root directory using workspace commands above, or directly from `backend/` directory):
 
 - `pnpm dev` - Start backend development server with file watching
-- `pnpm build` - Build backend for production
+- `pnpm build` - Build backend for production  
 - `pnpm start` - Start production server (requires build first)
-- `pnpm db:generate` - Generate database migration files
-- `pnpm db:push` - Push database schema changes to PostgreSQL
-- `pnpm db:studio` - Open Drizzle Studio for database management
 
 ### Docker Commands
 
@@ -254,46 +251,16 @@ The backend provides the following REST API endpoints:
 - `checkedInAt`: Original check-in time
 - `sentAt`: Email sent timestamp
 
-## Changelog
-
-### Version 1.1
-
-#### **Added**
-- `FROM_NAME` environment variable for custom sender names
-- Rate limiting: 600ms delays between emails (required by Resend API)
-- Retry logic with exponential backoff for email sending
-- Graceful server shutdown handling
-- Comprehensive email sending logs
-- Delete all data functionality with confirmation
-- Request timeout protection (10 seconds)
-- Counter for attendees eligible for email sending
-- Loading states and error handling
-- `dev.js` script for coordinated server startup and shutdown
-
-#### **Changed**
-- Email copy from "claim" to "redeem"
-- Database schema: combined `first_name` and `last_name` into single `name` field (some users lacked first names)
-- Terminology from "codes" to "referral URLs" throughout UI
-- Email template: removed footer section and emojis according to Cursor's style guide
-
-#### **Development**
-- Added workspace development rules
-- Updated terminal handling to preserve logs
-- Added CSV files to gitignore
-
-### Version 1.0 (Main Branch) - Initial Release
-- CSV upload and attendee management
-- Email sending with React Email templates
-- PostgreSQL database with Drizzle ORM
-- REST API with Hono.js
-- Frontend with React and Tailwind CSS
-
 ## TODO
 
 ### Development & Code Quality
 - Format all files in project with prettier
 - Add git commit hook for automatic prettier formatting
 - Add git commit hook for conventional commit messages
+- Add git pre-commit hook to run `pnpm build` before commits
+- Set up GitHub Actions CI to run build checks on PRs  
+- Add `pnpm typecheck` script for faster TypeScript validation during development
+- Consider adding ESLint rules to catch common issues during development
 
 ### Testing & Validation
 - Update template preview to match current template
@@ -327,14 +294,14 @@ The backend provides the following REST API endpoints:
 - Check file permissions
 - Restart the development servers
 
-**Email Sending Issues (v1.1+):**
+**Email Sending Issues:**
 - Check rate limiting if emails are failing (600ms delay between sends)
 - Monitor console logs for detailed error information
 - Verify all attendees have both check-in status AND assigned referral URLs
 - Check the dashboard counter showing attendees eligible for email (checked in + have referral URLs + not sent yet)
 
-**Request Timeout Errors (v1.1+):**
-- Frontend now has 10-second timeout protection
+**Request Timeout Errors:**
+- Frontend has 10-second timeout protection
 - If requests timeout, check backend server logs
 - Restart development servers if connection issues persist
 

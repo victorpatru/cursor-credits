@@ -1,5 +1,5 @@
 {
-  "name": "cursor-credits-backend",
+  "name": "backend",
   "version": "1.1.0",
   "private": true,
   "type": "module",
@@ -23,6 +23,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@types/pg": "^8.15.5",
     "drizzle-kit": "^0.31.4",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"
