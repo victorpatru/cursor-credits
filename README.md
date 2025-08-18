@@ -3,10 +3,33 @@
 
 A full-stack application for managing hackathon attendees and sending email credits to checked-in participants.
 
+## Quick Start
+
+**Prerequisites:** Node.js v18+, pnpm, Docker
+
+```bash
+# 1. Clone and install
+git clone <repository-url>
+cd cursor-credits
+pnpm install
+
+# 2. Set up environment
+cp .env.example .env.local
+# Edit .env.local with your Resend API key and email settings
+
+# 3. Start database and run migrations
+docker-compose up -d
+pnpm db:push
+
+# 4. Start development servers
+pnpm dev
+# Opens http://localhost:5173 automatically
+```
+
 ## Features
 
 - Upload attendee CSV data
-- Track checked-in attendees
+- Track checked-in attendees  
 - Assign referral URLs to attendees
 - Send automated emails with credits
 - View email statistics and history
@@ -21,90 +44,6 @@ A full-stack application for managing hackathon attendees and sending email cred
 - **Database**: PostgreSQL with Drizzle ORM
 - **Email**: Resend API
 - **Package Manager**: pnpm
-
-## Prerequisites
-
-Before you begin, ensure you have the following installed:
-
-- [Node.js](https://nodejs.org/) (v18 or higher)
-- [pnpm](https://pnpm.io/) (`npm install -g pnpm`)
-- [Docker](https://www.docker.com/) (for PostgreSQL database)
-- [Git](https://git-scm.com/)
-
-## Setup Instructions
-
-### 1. Clone the Repository
-
-```bash
-git clone <repository-url>
-cd cursor-credits
-```
-
-### 2. Install Dependencies
-
-Install all dependencies with a single command (uses pnpm workspaces):
-
-```bash
-pnpm install
-```
-
-**Note:** Uses pnpm workspaces - all commands run from root directory.
-
-### 3. Set Up Environment Variables
-
-Create environment files based on the example:
-
-```bash
-cp .env.example .env.local
-```
-
-Edit `.env.local` with your actual values:
-
-```env
-# Database Configuration
-DATABASE_URL=postgres://postgres:postgres@localhost:54320/send_hackathon
-
-# Resend Email Service  
-RESEND_API_KEY=re_...  # Get from resend.com
-MAIL_FROM=credits@example.com  # Verified domain in Resend
-FROM_NAME=  # Optional sender display name
-
-# Server Configuration
-PORT=8787
-CORS_ORIGIN=http://localhost:5173
-```
-
-### 4. Start PostgreSQL Database
-
-Using Docker Compose:
-
-```bash
-docker-compose up -d
-```
-
-This will start a PostgreSQL database on `localhost:54320`.
-
-### 5. Set Up Database Schema
-
-Run database migrations from the root directory:
-
-```bash
-pnpm db:push
-```
-
-This creates the necessary tables (`attendees` and `sent_emails`).
-
-### 6. Start the Development Servers
-
-From the root directory, run both frontend and backend servers in parallel:
-
-```bash
-pnpm dev
-```
-
-This will automatically start:
-- Backend server on `http://localhost:8787`
-- Frontend server on `http://localhost:5173` (opens in browser automatically)
 
 ## Commands
 
