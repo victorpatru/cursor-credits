@@ -1,0 +1,81 @@
+---
+title: Project Architecture & Tech Stack Overview
+description: High-level project structure, tech stack, and key architectural patterns for the hackathon credits application
+alwaysApply: true
+---
+
+# Project Architecture Guide
+
+This is a full-stack TypeScript application for hackathon credit distribution with email automation.
+
+## Project Structure
+
+**Root Level:**
+- Frontend: React + Vite + TypeScript + Tailwind CSS
+- Backend: [backend/](mdc:backend/) - Hono.js + Node.js + Drizzle ORM + PostgreSQL
+- Shared: Email templates, configuration, and utilities
+
+**Key Entry Points:**
+- Frontend: [src/main.tsx](mdc:src/main.tsx) -> [src/App.tsx](mdc:src/App.tsx)
+- Backend: [backend/src/server.ts](mdc:backend/src/server.ts)
+- Database: [backend/src/db/schema.ts](mdc:backend/src/db/schema.ts)
+- API Layer: [src/lib/api.ts](mdc:src/lib/api.ts)
+
+## Tech Stack
+
+**Frontend:**
+- **React 19** with functional components and hooks
+- **Vite** as build tool with [vite.config.ts](mdc:vite.config.ts)
+- **TypeScript** for type safety
+- **Tailwind CSS** with custom config [tailwind.config.js](mdc:tailwind.config.js)
+- **Sonner** for toast notifications
+
+**Backend:**
+- **Hono.js** as web framework (fast, lightweight)
+- **Node.js** runtime with proper HTTP server
+- **Drizzle ORM** for database operations
+- **PostgreSQL** as database
+- **Zod** for API validation
+- **Resend** for email delivery
+- **React Email** for email templates
+
+## Data Flow
+
+1. **CSV Upload** -> Parse & validate -> Store in PostgreSQL
+2. **Code Assignment** -> Update database with referral URLs
+3. **Email Sending** -> Generate HTML -> Send via Resend -> Track delivery
+
+## Key Directories
+
+- [src/](mdc:src/) - Frontend React application
+- [src/components/](mdc:src/components/) - Reusable UI components
+- [src/lib/](mdc:src/lib/) - API client and utilities
+- [backend/src/](mdc:backend/src/) - Backend server code
+- [backend/src/db/](mdc:backend/src/db/) - Database schema and connection
+- [backend/drizzle/](mdc:backend/drizzle/) - Database migrations
+
+## API Architecture
+
+RESTful API with resource-based endpoints:
+- Reference [README.md](mdc:README.md) for complete API endpoint list
+- Follow REST conventions: GET for retrieval, POST for creation/actions
+
+## Email System
+
+- **Templates:** React Email components in [backend/src/emailTemplate.tsx](mdc:backend/src/emailTemplate.tsx)
+- **Delivery:** Resend API with retry logic and rate limiting
+- **Tracking:** Database logging of sent emails
+
+## Database Design
+
+Two main tables:
+- `attendees` - Event participant data with referral codes
+- `sentEmails` - Email delivery history and tracking
+
+## Development Workflow
+
+- Reference [README.md](mdc:README.md) for setup and development commands
+
+## Environment Configuration
+
+- See [README.md](mdc:README.md) for complete environment setup

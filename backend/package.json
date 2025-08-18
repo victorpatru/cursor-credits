@@ -1,9 +1,10 @@
 {
-  "name": "send-hackathon-backend",
+  "name": "backend",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/server.ts",
+    "dev": "tsx watch --clear-screen=false src/server.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node --enable-source-maps dist/server.js",
     "db:generate": "drizzle-kit generate",
@@ -22,6 +23,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@types/pg": "^8.15.5",
     "drizzle-kit": "^0.31.4",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"

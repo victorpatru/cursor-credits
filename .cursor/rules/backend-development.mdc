@@ -1,0 +1,97 @@
+---
+title: Backend Development Guidelines  
+description: Hono.js API patterns, Drizzle ORM database operations, and server-side TypeScript conventions
+globs: ["backend/**/*.ts", "backend/**/*.js"]
+---
+
+# Backend Development Guidelines
+
+## Hono.js API Patterns
+
+**Server Setup:**
+- Follow the pattern in [backend/src/server.ts](mdc:backend/src/server.ts)
+- Implement graceful shutdown handling with signal listeners
+- Use proper Node.js HTTP server for better request handling
+
+**Route Structure:**
+- Group related endpoints by resource: `/api/attendees/*`, `/api/emails/*`
+- Use RESTful conventions:
+  - `POST /upload` - Create/bulk operations
+  - `GET /resource` - List operations  
+  - `POST /action` - Specific actions
+  - `DELETE /resource/:id` - Delete operations
+
+**Request Validation:**
+- Always validate all inputs with Zod schemas at API boundaries
+- Parse request data before processing to ensure type safety
+
+## Database Operations with Drizzle
+
+**Schema Definition:**
+- Follow patterns in [backend/src/db/schema.ts](mdc:backend/src/db/schema.ts)
+- Use proper column types, constraints, and indexes for performance
+- Include timestamps with timezone support for audit trails
+
+**Query Patterns:**
+- Use proper Drizzle query syntax with type-safe operations
+- Use transactions for atomic operations that modify multiple records
+- Reference [backend/src/db/schema.ts](mdc:backend/src/db/schema.ts) for available query methods
+
+**Database Connection:**
+- Use connection pooling
+- Implement proper connection cleanup
+- Handle database errors gracefully
+
+## Email Integration
+
+**Email Service Setup:**
+- Configure Resend API and environment variables  
+- Implement database tracking for sent emails
+- Use retry logic with exponential backoff and proper rate limiting
+- Reference [email-system](mdc:email-system) rule for detailed email patterns
+
+## Environment Configuration
+
+- Use dotenv with proper path resolution from `../../.env.local`
+- Reference [README.md](mdc:README.md) for complete environment setup
+
+## Logging and Monitoring
+
+**Request Logging:**
+- Use structured logging with context for debugging
+- Include operation names, counts, and relevant identifiers
+- Log at appropriate levels (info, warn, error) with meaningful messages
+
+**TypeScript Patterns:**
+- Always validate inputs with Zod schemas at API boundaries
+- Use proper TypeScript types for Drizzle queries and results
+- Implement consistent error handling patterns with meaningful messages
+- Use descriptive function names: `handleFileUpload`, `processEmailSending`
+
+**Performance Monitoring:**
+- Log operation start/completion times for debugging
+- Track batch operation progress during email sending
+
+## Error Handling Patterns
+
+- Use consistent try-catch error handling in all route handlers
+- Return proper HTTP status codes with meaningful error messages
+- Handle validation errors with Zod and provide field-specific feedback
+- Implement graceful database error handling and transaction rollback
+
+## Server Management
+
+**Graceful Shutdown:**
+- Handle SIGINT and SIGTERM signals for clean server shutdown
+- Close database connections and server properly
+- Reference [backend/src/server.ts](mdc:backend/src/server.ts) for implementation
+
+**Health Checks:**
+- Implement basic health endpoint for debugging
+- Check database connectivity during startup
+
+## Performance Optimization
+
+- Implement rate limiting for email operations and API calls
+- Use proper database indexes and connection pooling
+- Handle large CSV uploads efficiently

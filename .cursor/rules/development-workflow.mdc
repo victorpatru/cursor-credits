@@ -1,0 +1,116 @@
+---
+title: Development Workflow & Environment Setup
+description: Development workflow, environment configuration, dependency management, and deployment best practices
+globs: ["package.json", "*.config.js", "*.config.ts", "README.md", ".env*", "docker-compose.yml", "drizzle.config.ts"]
+---
+
+# Development Workflow & Best Practices
+
+## Development Scripts
+
+**Package.json Scripts:**
+- Reference actual [package.json](mdc:package.json) for current scripts
+- Key scripts: `pnpm dev`, `pnpm dev:frontend`, `pnpm dev:backend`
+
+**Development Servers:**
+- See [README.md](mdc:README.md) for complete server setup and port configuration
+
+## Database Management
+
+**Drizzle Commands:**
+- Reference [README.md](mdc:README.md) for current database setup commands
+- Use schema-first approach: modify schema, generate migration, apply
+
+**Schema Changes:**
+- Follow schema-first development: modify schema, generate migration, review SQL, apply
+- Reference [README.md](mdc:README.md) for specific commands
+
+## Environment Setup
+
+**Required Files:**
+- `.env.local` - Environment variables (root level)
+- `.gitignore` - Exclude sensitive files
+
+**Environment Variables:**
+- See [README.md](mdc:README.md) for complete environment variable list with examples and setup instructions
+
+**Security:**
+- Never commit `.env.local` to version control
+- Use separate API keys for different environments if needed
+- Validate all environment variables at startup
+
+## API Development Workflow
+
+**Adding New Endpoints:**
+- Follow pattern: define Zod schema, implement handler, add client function, update frontend
+- Maintain consistency between backend routes and frontend API client
+
+**Testing APIs:**
+- Use curl, Postman, or browser dev tools for endpoint testing
+- Reference actual API endpoints in [backend/src/server.ts](mdc:backend/src/server.ts)
+
+## Dependency Management
+
+**Package Manager:**
+- Use `pnpm` for consistent dependency management
+- Separate `package.json` files for frontend and backend
+- Run commands from appropriate directory or use `pnpm --dir`
+
+**Adding Dependencies:**
+- Use `pnpm add` for frontend, `pnpm --dir backend add` for backend
+- Always add TypeScript types with `-D` flag for dev dependencies
+
+## Code Quality
+
+**TypeScript Checking:**
+- Reference [package.json](mdc:package.json) for current linting commands
+- Use `tsc --noEmit` for type checking without compilation
+
+**Best Practices:**
+- Run TypeScript checks before committing
+- Fix all linting errors and warnings
+- Use ESLint configuration in [eslint.config.js](mdc:eslint.config.js)
+- Format code consistently with Prettier
+
+## Error Handling Strategy
+
+- Use try-catch blocks for async operations with proper user feedback
+- Validate inputs with Zod schemas and return meaningful errors
+- Log errors with context and use proper HTTP status codes
+- Use consistent error patterns across frontend and backend code
+
+## Performance Considerations
+
+- Frontend: Use React.memo, loading states, and bundle optimization
+- Backend: Database connection pooling, proper indexing, and rate limiting
+- See [backend-development](mdc:backend-development) for detailed optimization patterns
+
+## Security Guidelines
+
+**Input Validation:**
+- Validate all user inputs with Zod schemas
+- Sanitize CSV data before processing
+- Use parameterized database queries
+
+**Environment Security:**
+- Never commit `.env.local` to version control
+- Use separate API keys for different environments if needed
+- Validate all environment variables at application startup
+
+## Troubleshooting Common Issues
+
+- **Database:** Check `DATABASE_URL` format and server connectivity
+- **Email:** Verify `RESEND_API_KEY` validity and `MAIL_FROM` domain setup
+- **Frontend Connection:** Ensure backend is running on port 8787 and accessible
+
+## Logging
+
+- Use structured logging with context for debugging
+- Track email delivery success/failure rates
+- Log errors with sufficient detail for troubleshooting
+
+## Version Control Practices
+
+- Use descriptive commit messages with conventional format
+- Create feature branches and use pull requests for code review
+- Keep commits focused and atomic

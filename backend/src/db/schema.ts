@@ -5,8 +5,7 @@ export const attendees = pgTable(
   {
     id: serial("id").primaryKey(),
     email: text("email").notNull(),
-    firstName: text("first_name").notNull(),
-    lastName: text("last_name").notNull(),
+    name: text("name").notNull(),
     checkedInAt: text("checked_in_at").notNull(),
     assignedCode: text("assigned_code"),
     emailSent: boolean("email_sent").notNull().default(false),
@@ -22,8 +21,7 @@ export const sentEmails = pgTable(
   {
     id: serial("id").primaryKey(),
     email: text("email").notNull(),
-    firstName: text("first_name").notNull(),
-    lastName: text("last_name").notNull(),
+    name: text("name").notNull(),
     redemptionLink: text("redemption_link").notNull(),
     eventName: text("event_name").notNull(),
     checkedInAt: text("checked_in_at").notNull(),

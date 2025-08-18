@@ -1,0 +1,107 @@
+---
+title: Frontend Development Guidelines
+description: React, TypeScript, and Tailwind CSS patterns for building user interfaces and components
+globs: ["src/**/*.tsx", "src/**/*.ts", "*.config.ts", "*.config.js"]
+---
+
+# Frontend Development Guidelines
+
+## React Patterns
+
+**Component Architecture:**
+- Use functional components with hooks exclusively
+- Follow the pattern in [src/App.tsx](mdc:src/App.tsx) for component structure
+- Colocate related state and effects within components
+- Extract reusable components to [src/components/](mdc:src/components/)
+
+**State Management:**
+- Use local state with clear initialization and proper TypeScript typing
+- Leverage derived state and computed values for efficiency
+- Reference [src/App.tsx](mdc:src/App.tsx) for patterns
+
+**Event Handlers:**
+- Use async/await for API calls with proper try-catch-finally blocks
+- Always handle loading states and provide user feedback via toast
+- Follow patterns in [src/App.tsx](mdc:src/App.tsx) for consistency
+
+## Tailwind CSS Patterns
+
+**Layout Structure:**
+- Use `min-h-screen flex flex-col` for full-height layouts
+- Apply `sticky top-0 z-10` for fixed headers with backdrop blur
+- Use `max-w-4xl mx-auto` for content containers
+
+**Component Styling Principles:**
+- Use consistent Tailwind utility classes for layout and interaction states
+- Reference [src/App.tsx](mdc:src/App.tsx) and [src/components/](mdc:src/components/) for current patterns
+- Follow established color palette and spacing conventions
+
+**Status Colors:**
+- Follow established project color palette for consistency
+- Reference [tailwind.config.js](mdc:tailwind.config.js) for custom color definitions
+- Use semantic colors: blue (primary), green (success), red (errors), purple (codes)
+
+**Interactive States:**
+- Always include hover states and smooth transitions
+- Use consistent loading spinner patterns for async operations
+- Reference existing components for established interaction patterns
+
+## Component Patterns
+
+**File Upload Component:**
+- Follow [src/components/FileDropZone.tsx](mdc:src/components/FileDropZone.tsx) pattern
+- Support both drag-and-drop and click-to-upload
+- Show upload progress and validation feedback
+- Accept file type restrictions
+
+**Data Display:**
+- Use responsive grid layouts for statistics and card displays
+- Implement accessible table structures with proper overflow handling
+- Reference existing components for consistent styling patterns
+
+**Modal Dialogs:**
+- Use fixed positioning with backdrop and proper z-index management
+- Center content with max-width constraints and responsive margins
+- Ensure accessibility with focus management and keyboard navigation
+
+## TypeScript Usage
+
+**Type Definitions:**
+- Use interfaces for React component props and object shapes
+- Use type aliases for unions and primitive types
+- Always make optional props explicit with `?` operator
+
+**State Typing:**
+- Use explicit typing for complex state with union types when needed
+- Define proper return types for all functions, especially async ones
+- Avoid `any` types where possible, use specific interfaces instead
+
+**Naming Conventions:**
+- Variables/Functions: camelCase (`isUploading`, `handleFileSelect`)
+- Components: PascalCase (`EmailAutomationApp`, `FileDropZone`) 
+- Constants: UPPER_CASE (`BASE_URL`, `MAX_RETRIES`)
+- Booleans: Descriptive names (`isLoading`, `hasValidEmail`)
+
+**Error Handling:**
+- Always include comprehensive error handling for async operations
+- Provide both technical logging and user-friendly feedback
+- Use finally blocks for cleanup operations like loading states
+
+## API Integration
+
+**API Client Usage:**
+- Use the centralized API client from [src/lib/api.ts](mdc:src/lib/api.ts)
+- Import with descriptive aliases to avoid naming conflicts
+- Follow established patterns for error handling and data refresh
+
+**Promise Handling:**
+- Use `Promise.all()` for concurrent operations when possible
+- Refresh data after mutations: `await refreshAll()`
+- Handle loading states during async operations
+- Add timeout handling for network requests
+
+## User Experience Patterns
+
+- Show loading states with spinners and disabled buttons during async operations
+- Use Sonner toast for all user notifications with specific success/error messages
+- Validate on client-side before API calls and show inline validation errors
