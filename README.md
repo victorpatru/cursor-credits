@@ -267,6 +267,7 @@ The backend provides the following REST API endpoints:
 
 ### Testing & Validation
 - Update template preview to match current template
+- Add Cursor branding to email template
 - Test consecutive sending of credits (multiple rounds)
 - Test edge cases with mismatched quantities (more/fewer codes than attendees)
 - Test behavior with duplicate emails or invalid referral URLs
