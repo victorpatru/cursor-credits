@@ -1,0 +1,99 @@
+---
+title: Email System Implementation
+description: React Email template development and Resend API integration patterns for automated email sending
+globs: ["**/emailTemplate.tsx", "**/email*.ts", "**/email*.js"]
+---
+
+# Email System Guidelines
+
+## React Email Templates
+
+**Template Structure:**
+- Follow the pattern in [backend/src/emailTemplate.tsx](mdc:backend/src/emailTemplate.tsx)
+- Use React Email components with proper HTML structure
+- Always provide default values for props with fallbacks
+
+**Styling Principles:**
+- Use inline styles for maximum email client compatibility
+- Reference [backend/src/emailTemplate.tsx](mdc:backend/src/emailTemplate.tsx) for current styles
+- Use web-safe fonts and accessible color combinations
+
+## Email Delivery Integration
+
+**Resend Service Setup:**
+- Use environment variables for API keys and sender configuration
+- Build proper "from" field with optional display name
+- Reference [backend/src/server.ts](mdc:backend/src/server.ts) for implementation
+
+**Email Sending with Retry Logic:**
+- Implement retry logic with exponential backoff for failed sends
+- Validate email service responses and handle API errors gracefully
+- Use configurable retry attempts (default 3) for reliability
+
+**Rate Limiting:**
+- Implement delays between email sends to respect API limits
+- Use 600ms delays for Resend API compliance
+- Process emails sequentially to avoid overwhelming the service
+
+## Email Tracking & Logging
+
+**Database Recording:**
+- Record all sent emails in database for history and tracking
+- Update attendee status to prevent duplicate sends
+- Use atomic operations to ensure data consistency
+
+**Comprehensive Logging:**
+- Log email operations with context for debugging and monitoring
+- Include operation details like event name, recipient count, and service IDs
+- Use structured logging for easier log analysis
+
+## Template Personalization
+
+**Dynamic Content & Branding:**
+- Personalize emails with recipient name and event-specific content
+- Include event-specific branding and names in email templates
+- Use fallback values for optional personalization fields
+- Reference [backend/src/emailTemplate.tsx](mdc:backend/src/emailTemplate.tsx) for examples
+
+## Template Rendering
+
+**Server-Side Rendering:**
+- Use React Email's render function to generate HTML from React components
+- Pass all required props with fallback values for robustness
+
+**Error Handling:**
+- Wrap email rendering and sending in try-catch blocks
+- Log detailed errors for debugging while throwing for upstream handling
+- Validate all required data before attempting email operations
+
+## Email Content Guidelines
+
+**Subject Lines:**
+- Keep concise and action-oriented
+- Use consistent format: "Your hackathon credits are ready!"
+- Avoid spam triggers
+
+**Email Body Structure:**
+1. **Preview Text:** Brief summary for email clients
+2. **Header:** Event branding/name
+3. **Greeting:** Personalized salutation
+4. **Main Content:** Clear value proposition
+5. **Call-to-Action:** Prominent button/link
+6. **Footer:** Additional context/support
+
+**Accessibility:**
+- Use semantic HTML structure
+- Provide alt text for images
+- Ensure sufficient color contrast
+- Test with screen readers
+
+## Testing & Performance
+
+**Template Testing:**
+- Validate all required data before sending emails
+- Implement preview functionality for testing email appearance
+- Skip invalid records with appropriate logging
+
+**Performance Best Practices:**
+- Process emails in small batches to prevent memory issues
+- Continue processing on individual failures with proper error counting
