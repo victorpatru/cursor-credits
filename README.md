@@ -1,7 +1,7 @@
-# Send Hackathon Credits App
+# Cursor Credits Manager
 **Version 1.1** - See [CHANGELOG](CHANGELOG.md)
 
-A full-stack application for managing hackathon attendees and sending email credits to checked-in participants.
+A tool for managing event attendees and automatically distributing Cursor credits to checked-in hackathon participants.
 
 ## Quick Start
 
